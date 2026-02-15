@@ -33,7 +33,7 @@ import {
 } from './db';
 import { isErc8004Enabled, registerAgent, buildAgentCard, resolveAgent8004Owner } from './erc8004';
 import { fetchAllEigens, fetchEigen, fetchRecentTrades, checkPonderHealth, type PonderEigen } from './ponder';
-import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey, BAZAAR_EXTENSIONS, MARKET_MAKING_EXTENSIONS } from './x402';
+import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey, BAZAAR_EXTENSIONS, MARKET_MAKING_EXTENSIONS, FUND_EXTENSIONS } from './x402';
 import { getPositionSummary } from './pnl-tracker';
 import { executeTakeProfit } from './trader';
 import { getTokenBalance } from './sell-executor';
@@ -1347,6 +1347,134 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  // ── /api/services/* — x402 discoverable resources ────────────────────
+  // Each sub-path is a separate x402scan resource. GET returns 402 for discovery,
+  // POST routes to the actual service handler.
+  const SERVICE_MAP: Record<string, { extensions: Record<string, unknown>; description: string }> = {
+    'token-launch': { extensions: BAZAAR_EXTENSIONS, description: 'Deploy new token on nad.fun + start autonomous market making' },
+    'market-making': { extensions: MARKET_MAKING_EXTENSIONS, description: 'Start autonomous market making on an existing Monad token' },
+    'fund': { extensions: FUND_EXTENSIONS, description: 'Add more volume budget to an existing market-making agent' },
+  };
+
+  const servicesMatch = path.match(/^\/api\/services\/([^/]+)$/);
+  if (servicesMatch) {
+    const serviceName = servicesMatch[1]!;
+    const service = SERVICE_MAP[serviceName];
+
+    if (!service) {
+      return json(res, {
+        error: `Unknown service: ${serviceName}`,
+        available: Object.keys(SERVICE_MAP),
+      }, 404);
+    }
+
+    const pkgId = (method === 'GET' ? url.searchParams.get('package') : undefined) || 'starter';
+    const pkg = getPackage(pkgId);
+    if (!pkg) {
+      return json(res, { error: `Unknown package: ${pkgId}` }, 400);
+    }
+
+    if (method === 'GET') {
+      // Discovery — return 402 with bazaar extensions for x402scan
+      const paymentRequired = build402Response(pkg, `/api/services/${serviceName}`, 'monad', service.extensions);
+      res.writeHead(402, build402Headers(paymentRequired));
+      res.end(JSON.stringify(paymentRequired));
+      return;
+    }
+
+    if (method === 'POST') {
+      // Route POST to the actual service handler
+      // token-launch → /api/launch, market-making → /api/market-making, fund → /api/services/fund
+      if (serviceName === 'token-launch') {
+        // Rewrite internally to /api/launch handler (handled below)
+        // Set a flag so the launch handler picks it up
+        (req as any).__serviceRoute = '/api/launch';
+      } else if (serviceName === 'market-making') {
+        (req as any).__serviceRoute = '/api/market-making';
+      } else if (serviceName === 'fund') {
+        // Inline fund handler
+        try {
+          const body = await readBody(req);
+          const data = JSON.parse(body || '{}');
+
+          const xPayment = getPaymentHeader(req.headers);
+          const paymentTxHash = xPayment ? derivePaymentKey(xPayment) : undefined;
+
+          const fundPkgId = data.packageId || 'starter';
+          const fundPkg = getPackage(fundPkgId);
+
+          if (!xPayment || !paymentTxHash) {
+            if (fundPkg) {
+              const paymentRequired = build402Response(fundPkg, '/api/services/fund', 'monad', FUND_EXTENSIONS);
+              res.writeHead(402, build402Headers(paymentRequired));
+              res.end(JSON.stringify(paymentRequired));
+              return;
+            }
+            return json(res, { error: 'Payment required.' }, 402);
+          }
+
+          if (!fundPkg) return json(res, { error: `Unknown package: ${fundPkgId}` }, 400);
+          if (!data.eigenId) return json(res, { error: 'eigenId is required' }, 400);
+
+          if (isPaymentUsed(paymentTxHash)) return json(res, { error: 'Payment already used' }, 409);
+
+          const requirements = buildPaymentRequirements(fundPkg, '/api/services/fund');
+          const verification = await verifyAndSettlePayment(xPayment, requirements);
+          if (!verification.valid) return json(res, { error: `Payment failed: ${verification.error}` }, 402);
+
+          const eigenId = data.eigenId;
+          const config = getEigenConfig(eigenId);
+          if (!config) return json(res, { error: 'Eigen not found' }, 404);
+
+          recordPayment({ txHash: paymentTxHash, payerAddress: verification.from, amountUsdc: verification.amount, packageId: fundPkg.id, eigenId });
+
+          // Fund sub-wallets with additional volume
+          const wallets = getWalletsForEigen(eigenId, config.wallet_count || 5);
+          const monPerWallet = fundPkg.ethVolume / wallets.length;
+          let walletsFunded = 0;
+
+          if (monPerWallet > 0) {
+            const masterWallet = getWalletClient(143);
+            const monadClient = getPublicClient(143);
+            const monPerWalletWei = parseEther(monPerWallet.toString());
+            for (const wallet of wallets) {
+              try {
+                const txHash = await masterWallet.sendTransaction({ to: wallet.address as `0x${string}`, value: monPerWalletWei });
+                await monadClient.waitForTransactionReceipt({ hash: txHash });
+                walletsFunded++;
+              } catch (err) {
+                console.error(`[Fund] Failed to fund wallet ${wallet.address}:`, (err as Error).message);
+              }
+            }
+          }
+
+          return json(res, {
+            success: true,
+            eigenId,
+            addedVolumeEth: fundPkg.ethVolume.toString(),
+            walletsFunded,
+            payer: verification.from,
+          }, 200);
+        } catch (error) {
+          return json(res, { error: 'Fund failed: ' + (error as Error).message }, 500);
+        }
+      }
+    }
+  }
+
+  // GET /api/services — list all available services
+  if (method === 'GET' && path === '/api/services') {
+    return json(res, {
+      services: Object.entries(SERVICE_MAP).map(([name, svc]) => ({
+        name,
+        url: `${process.env.KEEPER_BASE_URL || 'https://monad.eigenswarm.xyz'}/api/services/${name}`,
+        description: svc.description,
+        method: 'POST',
+        payment: 'x402 (USDC)',
+      })),
+    });
+  }
+
   // GET /api/launch/info — deposit address for ETH direct launches
   if (method === 'GET' && path === '/api/launch/info') {
     return json(res, { depositAddress: getKeeperAddress() });
@@ -1721,7 +1849,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   // Accepts either:
   //   - X-ETH-PAYMENT header: user sent ETH directly to keeper (frontend flow)
   //   - X-PAYMENT header: user paid USDC via x402 (agent/API flow)
-  if (method === 'POST' && path === '/api/launch') {
+  if (method === 'POST' && (path === '/api/launch' || (req as any).__serviceRoute === '/api/launch')) {
     try {
       const body = await readBody(req);
       const data = JSON.parse(body || '{}');
@@ -2722,7 +2850,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
   // POST /api/market-making — Start market-making on an existing token via x402 payment
   // Pay USDC via x402, provide a token address, and the keeper spins up sub-wallets + starts trading.
-  if (method === 'POST' && path === '/api/market-making') {
+  if (method === 'POST' && (path === '/api/market-making' || (req as any).__serviceRoute === '/api/market-making')) {
     try {
       const body = await readBody(req);
       const data = JSON.parse(body || '{}');
@@ -2754,8 +2882,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       }
 
       // Check for duplicate payment
-      const existingPayment = getPayment(paymentTxHash);
-      if (existingPayment) {
+      if (isPaymentUsed(paymentTxHash)) {
         return json(res, { error: 'Payment already used' }, 409);
       }
 
@@ -2768,16 +2895,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         return json(res, { error: `Payment verification failed: ${verification.error}` }, 402);
       }
 
-      // Record payment
-      recordPayment(paymentTxHash, verification.from, verification.amount, verification.settleTxHash || null);
-      console.log(`[Market-Making] Payment verified — payer: ${verification.from}, amount: ${verification.amount} USDC`);
-
       // Derive eigen config for market-making
       const tokenAddress = data.tokenAddress.toLowerCase();
       const chainId = data.chainId || 143;
       const eigenClass = data.class || 'operator';
       const requestedWalletCount = data.walletCount || 5;
       const eigenId = tokenAddress; // Use token address as eigen ID
+
+      // Record payment
+      recordPayment({
+        txHash: paymentTxHash,
+        payerAddress: verification.from,
+        amountUsdc: verification.amount,
+        packageId: pkg.id,
+        eigenId,
+      });
+      console.log(`[Market-Making] Payment verified — payer: ${verification.from}, amount: ${verification.amount} USDC`);
 
       // Check if eigen already exists
       const existing = getEigenConfig(eigenId);
@@ -2791,17 +2924,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
       // Insert eigen config for market-making
       insertEigenConfig({
-        eigen_id: eigenId,
-        token_address: tokenAddress,
-        token_symbol: data.symbol || 'UNKNOWN',
-        chain_id: chainId,
+        eigenId,
+        tokenAddress,
+        tokenSymbol: data.symbol || 'UNKNOWN',
+        chainId,
         class: eigenClass,
-        wallet_count: requestedWalletCount,
-        status: 'active',
-        owner_address: verification.from,
-        volume_budget_eth: pkg.ethVolume.toString(),
-        payment_tx_hash: paymentTxHash,
-        payment_amount_usdc: verification.amount,
+        walletCount: requestedWalletCount,
+        ownerAddress: verification.from,
+        volumeTarget: pkg.ethVolume,
       });
 
       // Fund sub-wallets
@@ -2812,16 +2942,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       if (monPerWallet > 0) {
         const masterWallet = getWalletClient(143);
         const monadClient = getPublicClient(143);
-        const { parseEther } = await import('viem');
         const monPerWalletWei = parseEther(monPerWallet.toString());
 
         for (const wallet of wallets) {
           try {
-            const txHash = await masterWallet.sendTransaction({
+            const fundTxHash = await masterWallet.sendTransaction({
               to: wallet.address as `0x${string}`,
               value: monPerWalletWei,
             });
-            await monadClient.waitForTransactionReceipt({ hash: txHash });
+            await monadClient.waitForTransactionReceipt({ hash: fundTxHash });
             walletsFunded++;
           } catch (err) {
             console.error(`[Market-Making] Failed to fund wallet ${wallet.address}:`, (err as Error).message);

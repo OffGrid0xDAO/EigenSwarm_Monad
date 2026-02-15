@@ -136,158 +136,95 @@ export function build402Response(
 }
 
 // ── Bazaar Discovery Extensions ───────────────────────────────────────
-// Produces the correct BodyDiscoveryExtension format for x402 Bazaar compatibility.
+// Each service gets its own bazaar extension for x402scan resource discovery.
 
-export const BAZAAR_EXTENSIONS: Record<string, unknown> = {
-  bazaar: {
-    info: {
-      input: {
-        type: 'http',
-        bodyType: 'json',
-        body: {
-          name: 'MyToken',
-          symbol: 'MTK',
-          packageId: 'starter',
-          class: 'operator',
-          walletCount: 10,
-          description: 'Autonomous market-making agent',
-        },
+function makeBazaarExtension(input: Record<string, unknown>, inputSchema: Record<string, unknown>, outputExample: Record<string, unknown>, outputSchema: Record<string, unknown>): Record<string, unknown> {
+  return {
+    bazaar: {
+      info: {
+        input: { type: 'http', bodyType: 'json', body: input },
+        output: { type: 'json', example: outputExample },
       },
-      output: {
-        type: 'json',
-        example: {
-          status: 'success',
-          eigenId: '0x...',
-          tokenAddress: '0x...',
-          poolAddress: '0x...',
-          agent8004Id: '...',
+      schema: {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        properties: {
+          input: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', const: 'http' },
+              method: { type: 'string', enum: ['POST', 'PUT', 'PATCH'] },
+              bodyType: { type: 'string', enum: ['json', 'form-data', 'text'] },
+              body: inputSchema,
+            },
+            required: ['type', 'bodyType', 'body'],
+            additionalProperties: false,
+          },
+          output: {
+            type: 'object',
+            properties: {
+              type: { type: 'string' },
+              example: { type: 'object', ...outputSchema },
+            },
+            required: ['type'],
+          },
         },
+        required: ['input'],
       },
     },
-    schema: {
-      $schema: 'https://json-schema.org/draft/2020-12/schema',
-      type: 'object',
-      properties: {
-        input: {
-          type: 'object',
-          properties: {
-            type: { type: 'string', const: 'http' },
-            method: { type: 'string', enum: ['POST', 'PUT', 'PATCH'] },
-            bodyType: { type: 'string', enum: ['json', 'form-data', 'text'] },
-            body: {
-              properties: {
-                name: { type: 'string', description: 'Token name' },
-                symbol: { type: 'string', description: 'Token ticker symbol (2-10 chars)' },
-                packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package' },
-                class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class (determines wallet count range)' },
-                walletCount: { type: 'number', description: 'Number of sub-wallets for market making' },
-                description: { type: 'string', description: 'Agent description' },
-                imageUrl: { type: 'string', description: 'Token logo URL' },
-                chainId: { type: 'number', description: 'Target chain (8453=Base, 10143=Monad)' },
-              },
-              required: ['name', 'symbol', 'packageId'],
-            },
-          },
-          required: ['type', 'bodyType', 'body'],
-          additionalProperties: false,
-        },
-        output: {
-          type: 'object',
-          properties: {
-            type: { type: 'string' },
-            example: {
-              type: 'object',
-              properties: {
-                status: { type: 'string' },
-                eigenId: { type: 'string' },
-                tokenAddress: { type: 'string' },
-                poolAddress: { type: 'string' },
-                agent8004Id: { type: 'string' },
-              },
-            },
-          },
-          required: ['type'],
-        },
-      },
-      required: ['input'],
-    },
-  },
-};
+  };
+}
 
-export const MARKET_MAKING_EXTENSIONS: Record<string, unknown> = {
-  bazaar: {
-    info: {
-      input: {
-        type: 'http',
-        bodyType: 'json',
-        body: {
-          tokenAddress: '0x...',
-          packageId: 'starter',
-          class: 'operator',
-          walletCount: 5,
-        },
-      },
-      output: {
-        type: 'json',
-        example: {
-          success: true,
-          eigenId: '0x...',
-          tokenAddress: '0x...',
-          walletsCreated: 5,
-          walletsFunded: 5,
-          monPerWallet: '0.2',
-          status: 'active',
-        },
-      },
+// Token Launch — deploy new token on nad.fun + start autonomous market making
+export const BAZAAR_EXTENSIONS = makeBazaarExtension(
+  { name: 'MyToken', symbol: 'MTK', packageId: 'starter', class: 'operator', walletCount: 10, description: 'Autonomous market-making agent' },
+  {
+    properties: {
+      name: { type: 'string', description: 'Token name' },
+      symbol: { type: 'string', description: 'Token ticker symbol (2-10 chars)' },
+      packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package' },
+      class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class (determines wallet count range)' },
+      walletCount: { type: 'number', description: 'Number of sub-wallets for market making' },
+      description: { type: 'string', description: 'Agent description' },
+      imageUrl: { type: 'string', description: 'Token logo URL' },
+      chainId: { type: 'number', description: 'Target chain (10143=Monad)' },
     },
-    schema: {
-      $schema: 'https://json-schema.org/draft/2020-12/schema',
-      type: 'object',
-      properties: {
-        input: {
-          type: 'object',
-          properties: {
-            type: { type: 'string', const: 'http' },
-            method: { type: 'string', enum: ['POST', 'PUT', 'PATCH'] },
-            bodyType: { type: 'string', enum: ['json', 'form-data', 'text'] },
-            body: {
-              properties: {
-                tokenAddress: { type: 'string', description: 'Token contract address to market-make' },
-                packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package — determines ETH volume and USDC price' },
-                class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class — determines number of sub-wallets' },
-                walletCount: { type: 'number', description: 'Number of sub-wallets for trading (must be within class range)' },
-                chainId: { type: 'number', description: 'Chain ID (10143=Monad)' },
-              },
-              required: ['tokenAddress', 'packageId'],
-            },
-          },
-          required: ['type', 'bodyType', 'body'],
-          additionalProperties: false,
-        },
-        output: {
-          type: 'object',
-          properties: {
-            type: { type: 'string' },
-            example: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean' },
-                eigenId: { type: 'string' },
-                tokenAddress: { type: 'string' },
-                walletsCreated: { type: 'number' },
-                walletsFunded: { type: 'number' },
-                monPerWallet: { type: 'string' },
-                status: { type: 'string' },
-              },
-            },
-          },
-          required: ['type'],
-        },
-      },
-      required: ['input'],
-    },
+    required: ['name', 'symbol', 'packageId'],
   },
-};
+  { success: true, eigenId: '0x...', tokenAddress: '0x...', poolAddress: '0x...', agent8004Id: '...' },
+  { properties: { success: { type: 'boolean' }, eigenId: { type: 'string' }, tokenAddress: { type: 'string' }, poolAddress: { type: 'string' }, agent8004Id: { type: 'string' } } },
+);
+
+// Market Making — start autonomous trading on an existing token
+export const MARKET_MAKING_EXTENSIONS = makeBazaarExtension(
+  { tokenAddress: '0x...', packageId: 'starter', class: 'operator', walletCount: 5 },
+  {
+    properties: {
+      tokenAddress: { type: 'string', description: 'Token contract address to market-make' },
+      packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package — determines ETH volume and USDC price' },
+      class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class — determines number of sub-wallets' },
+      walletCount: { type: 'number', description: 'Number of sub-wallets for trading (must be within class range)' },
+      chainId: { type: 'number', description: 'Chain ID (10143=Monad)' },
+    },
+    required: ['tokenAddress', 'packageId'],
+  },
+  { success: true, eigenId: '0x...', tokenAddress: '0x...', walletsCreated: 5, walletsFunded: 5, monPerWallet: '0.2', status: 'active' },
+  { properties: { success: { type: 'boolean' }, eigenId: { type: 'string' }, tokenAddress: { type: 'string' }, walletsCreated: { type: 'number' }, walletsFunded: { type: 'number' }, monPerWallet: { type: 'string' }, status: { type: 'string' } } },
+);
+
+// Fund Eigen — add more volume budget to an existing market-making agent
+export const FUND_EXTENSIONS = makeBazaarExtension(
+  { eigenId: '0x...', packageId: 'growth' },
+  {
+    properties: {
+      eigenId: { type: 'string', description: 'Eigen ID (token address) to fund' },
+      packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package to add' },
+    },
+    required: ['eigenId', 'packageId'],
+  },
+  { success: true, eigenId: '0x...', addedVolumeEth: '5', totalVolumeEth: '6', walletsFunded: 5 },
+  { properties: { success: { type: 'boolean' }, eigenId: { type: 'string' }, addedVolumeEth: { type: 'string' }, totalVolumeEth: { type: 'string' }, walletsFunded: { type: 'number' } } },
+);
 
 // ── x402 Response Headers ────────────────────────────────────────────
 
