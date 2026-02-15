@@ -522,7 +522,7 @@ export default function EigenDetailPage() {
                 <div className="w-px h-3 bg-white/10" />
                 <div className="flex items-center gap-1.5">
                   <span className="text-white/35">Chain</span>
-                  <span className="font-mono text-white/80">Base</span>
+                  <span className="font-mono text-white/80">{eigen.chainId === 143 ? 'Monad' : 'Base'}</span>
                 </div>
                 {reputation && reputation.totalFeedback > 0 && (
                   <>
@@ -545,12 +545,15 @@ export default function EigenDetailPage() {
             <div className="mt-3 pt-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               {eigen.agent8004Id ? (
                 <a
-                  href={`https://basescan.org/token/${ERC8004_IDENTITY_REGISTRY}?a=${eigen.agent8004Id}`}
+                  href={eigen.chainId === 143
+                    ? `https://monadscan.com/token/${ERC8004_IDENTITY_REGISTRY}?a=${eigen.agent8004Id}`
+                    : `https://basescan.org/token/${ERC8004_IDENTITY_REGISTRY}?a=${eigen.agent8004Id}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-[10px] text-[#A78BFA]/70 hover:text-[#A78BFA] transition-colors"
                 >
-                  View on BaseScan
+                  View on {eigen.chainId === 143 ? 'MonadScan' : 'BaseScan'}
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                     <polyline points="15 3 21 3 21 9" />
@@ -811,7 +814,7 @@ export default function EigenDetailPage() {
                 </div>
                 <div className="flex items-center gap-3 text-[11px] flex-wrap">
                   <span className="text-white/35">ID <span className="font-mono text-white/80">{eigen.agent8004Id ? `#${eigen.agent8004Id}` : '\u2014'}</span></span>
-                  <span className="text-white/35">Chain <span className="font-mono text-white/80">Base</span></span>
+                  <span className="text-white/35">Chain <span className="font-mono text-white/80">{eigen.chainId === 143 ? 'Monad' : 'Base'}</span></span>
                   <span className="text-white/35">Registry <span className="font-mono text-[10px] text-white/50">{truncateAddress(ERC8004_IDENTITY_REGISTRY)}</span></span>
                 </div>
               </div>

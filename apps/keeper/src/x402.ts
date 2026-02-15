@@ -65,8 +65,9 @@ export function getPackage(id: string): VolumePackage | undefined {
 // ── x402 Payment Requirements ─────────────────────────────────────────
 
 export interface PaymentRequirements {
-  scheme: string;
+  scheme: 'exact';
   network: string;
+  amount: string;
   maxAmountRequired: string;
   resource: string;
   description: string;
@@ -74,19 +75,22 @@ export interface PaymentRequirements {
   payTo: string;
   maxTimeoutSeconds: number;
   asset: string;
-  extra?: Record<string, unknown>;
+  extra: Record<string, unknown>;
 }
 
 export interface X402PaymentRequired {
-  x402Version: number;
+  x402Version: 2;
   accepts: PaymentRequirements[];
+  resource: { url: string; description: string; mimeType: string };
+  extensions?: Record<string, unknown>;
 }
 
 export function buildPaymentRequirements(pkg: VolumePackage, endpoint: string, network: 'monad' | 'base' = 'monad'): PaymentRequirements {
   const amountBaseUnits = (pkg.priceUSDC * 1_000_000).toString();
   return {
     scheme: 'exact',
-    network,
+    network: network === 'monad' ? 'eip155:10143' : 'eip155:8453',
+    amount: amountBaseUnits,
     maxAmountRequired: amountBaseUnits,
     resource: endpoint,
     description: `EigenSwarm ${pkg.id} package: ${pkg.ethVolume} ETH volume over ${pkg.duration}`,
@@ -94,14 +98,56 @@ export function buildPaymentRequirements(pkg: VolumePackage, endpoint: string, n
     payTo: X402_PAY_TO,
     maxTimeoutSeconds: 300,
     asset: network === 'monad' ? USDC_MONAD : USDC_BASE,
+    extra: {},
   };
 }
 
-export function build402Response(pkg: VolumePackage, endpoint: string, network: 'monad' | 'base' = 'monad'): X402PaymentRequired {
+export function build402Response(
+  pkg: VolumePackage,
+  endpoint: string,
+  network: 'monad' | 'base' = 'monad',
+  extensions?: Record<string, unknown>,
+): X402PaymentRequired {
+  const requirements = buildPaymentRequirements(pkg, endpoint, network);
   return {
     x402Version: 2,
-    accepts: [buildPaymentRequirements(pkg, endpoint, network)],
+    accepts: [requirements],
+    resource: {
+      url: requirements.resource,
+      description: requirements.description,
+      mimeType: requirements.mimeType,
+    },
+    ...(extensions ? { extensions } : {}),
   };
+}
+
+// ── x402 Response Headers ────────────────────────────────────────────
+
+/**
+ * Base64-encode a PaymentRequired object for the PAYMENT-REQUIRED response header.
+ * x402 v2 clients read this header instead of the JSON body.
+ */
+export function encode402Header(paymentRequired: X402PaymentRequired): string {
+  return Buffer.from(JSON.stringify(paymentRequired)).toString('base64');
+}
+
+/**
+ * Build the 402 response headers (compatible with both v1 and v2 x402 clients).
+ * v1 clients read the JSON body; v2 clients read the PAYMENT-REQUIRED header.
+ */
+export function build402Headers(paymentRequired: X402PaymentRequired): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'PAYMENT-REQUIRED': encode402Header(paymentRequired),
+  };
+}
+
+/**
+ * Extract the payment payload from request headers.
+ * Supports both v2 (PAYMENT-SIGNATURE) and v1 (X-PAYMENT) header names.
+ */
+export function getPaymentHeader(headers: Record<string, string | string[] | undefined>): string | undefined {
+  return (headers['payment-signature'] || headers['x-payment']) as string | undefined;
 }
 
 // ── x402 Facilitator Client ───────────────────────────────────────────

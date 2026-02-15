@@ -33,7 +33,7 @@ import {
 } from './db';
 import { isErc8004Enabled, registerAgent, buildAgentCard, resolveAgent8004Owner } from './erc8004';
 import { fetchAllEigens, fetchEigen, fetchRecentTrades, checkPonderHealth, type PonderEigen } from './ponder';
-import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, verifyAndSettlePayment, derivePaymentKey } from './x402';
+import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey } from './x402';
 import { getPositionSummary } from './pnl-tracker';
 import { executeTakeProfit } from './trader';
 import { getTokenBalance } from './sell-executor';
@@ -44,13 +44,14 @@ import {
   deleteImportedWallets,
   updateWalletSource,
 } from './db';
-import { resolvePool } from './pool-resolver';
+import { resolvePool, computeV4PoolId, ZERO_ADDRESS } from './pool-resolver';
 import { getTokenPriceWithFallback } from './price-oracle';
 import { publicClient, getPublicClient, getWalletClient, getKeeperAddress } from './client';
 import { ERC20_ABI, EIGENVAULT_ABI, EIGENVAULT_ADDRESS, EIGENLP_ABI, EIGEN_ATOMIC_LAUNCHER_ABI, eigenIdToBytes32, getSupportedChainIds, isChainSupported, getChainConfig } from '@eigenswarm/shared';
 import { getCachedOnChainEigens, discoverEigensFromChain } from './recovery';
 import { swapUsdcToEth, swapUsdcAndFundEigen, checkTreasuryHealth, verifyEthPayment } from './treasury';
 import { createMonadToken, restartGraduationMonitor, type CreateMonadTokenParams } from './monad-trader';
+import { uploadImageToNadFun, uploadMetadataToNadFun, mineSaltFromNadFun, generatePlaceholderSvg } from './nadfun-api';
 import { createMonadV4Pool, priceToSqrtPriceX96 } from './monad-lp';
 import { deployBaseToken, buildClankerDeployTx } from './base-deployer';
 import { readClankerPoolPrice, seedBaseLPBundled, seedBaseLPWithAgent, seedBaseLPDirect, atomicDeployAndLaunch } from './base-lp';
@@ -1561,8 +1562,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         return json(res, { error: 'No trading pool found for this token. Ensure the token has liquidity on a supported DEX.' }, 400);
       }
 
-      // Check for x402 payment proof (base64-encoded signed payload)
-      const xPayment = req.headers['x-payment'] as string | undefined;
+      // Check for x402 payment proof (v2: PAYMENT-SIGNATURE, v1: X-PAYMENT)
+      const xPayment = getPaymentHeader(req.headers);
       const paymentTxHash = xPayment ? derivePaymentKey(xPayment) : undefined;
 
       // Check for payment replay
@@ -1589,7 +1590,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       if (!xPayment || !paymentTxHash) {
         // No payment — respond 402 with x402-compliant payment requirements
         const paymentRequired = build402Response(pkg, path);
-        res.writeHead(402, { 'Content-Type': 'application/json' });
+        res.writeHead(402, build402Headers(paymentRequired));
         res.end(JSON.stringify(paymentRequired));
         return;
       }
@@ -1750,22 +1751,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       const paymentNetwork: 'monad' | 'base' = paymentChainId === 8453 ? 'base' : 'monad';
 
       const ethPaymentTxHash = req.headers['x-eth-payment'] as string | undefined;
-      const xPayment = req.headers['x-payment'] as string | undefined;
+      const xPayment = getPaymentHeader(req.headers);
       // For ETH: dedup key = tx hash. For x402 USDC: dedup key = sha256 of signed payload.
       const paymentTxHash = ethPaymentTxHash || (xPayment ? derivePaymentKey(xPayment) : undefined);
 
       if (!paymentTxHash) {
-        // No payment — if packageId provided, return 402 with x402 payment requirements
-        if (data.packageId) {
-          const pkg = getPackage(data.packageId);
-          if (pkg) {
-            const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork);
-            res.writeHead(402, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(paymentRequired));
-            return;
-          }
+        // No payment — return 402 with x402-compliant payment requirements
+        const pkgId = data.packageId || 'starter';
+        const pkg = getPackage(pkgId);
+        if (pkg) {
+          const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork);
+          res.writeHead(402, build402Headers(paymentRequired));
+          res.end(JSON.stringify(paymentRequired));
+          return;
         }
-        return json(res, { error: 'Payment required. Send X-ETH-PAYMENT (ETH tx hash) or X-PAYMENT (x402 signed payload) header.' }, 402);
+        return json(res, { error: 'Payment required. Send X-PAYMENT or PAYMENT-SIGNATURE header with x402 signed payload.' }, 402);
       }
 
       // Payment replay check
@@ -1999,17 +1999,48 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             // Default initial price for V4 pool (~0.00005 MON/token)
             const defaultSqrtPriceX96 = 5602277097478614n;
             const tradingFeeBps = BigInt(Math.round(classConfig.protocolFee * 100));
-            const salt = keccak256(toHex(`${sanitizedName}-${sanitizedSymbol}-${Date.now()}`));
-            const tokenURIObj: Record<string, string> = {
+
+            // ── Upload image + metadata to nad.fun API for proper visibility ──
+            let imageUri = '';
+            if (data.image) {
+              // data.image can be a URL or base64
+              if (data.image.startsWith('http')) {
+                imageUri = data.image;
+              } else {
+                // base64 → buffer → upload to nad.fun
+                const base64Data = data.image.replace(/^data:image\/\w+;base64,/, '');
+                const imgBuffer = Buffer.from(base64Data, 'base64');
+                const mimeMatch = data.image.match(/^data:(image\/\w+);base64,/);
+                const contentType = mimeMatch ? mimeMatch[1] : 'image/png';
+                const uploaded = await uploadImageToNadFun(imgBuffer, contentType);
+                imageUri = uploaded.imageUri;
+              }
+            } else {
+              // No image provided — upload placeholder SVG
+              const svgBuffer = generatePlaceholderSvg(sanitizedName, sanitizedSymbol);
+              const uploaded = await uploadImageToNadFun(svgBuffer, 'image/svg+xml');
+              imageUri = uploaded.imageUri;
+            }
+
+            // Upload metadata to nad.fun
+            const { metadataUri } = await uploadMetadataToNadFun({
+              imageUri,
               name: sanitizedName,
               symbol: sanitizedSymbol,
               description: sanitizedDescription,
-            };
-            if (data.image) tokenURIObj.image = data.image; // base64 or URL
-            if (data.website) tokenURIObj.website = data.website;
-            if (data.twitter) tokenURIObj.twitter = data.twitter;
-            if (data.telegram) tokenURIObj.telegram = data.telegram;
-            const tokenURI = JSON.stringify(tokenURIObj);
+              website: data.website,
+              twitter: data.twitter,
+              telegram: data.telegram,
+            });
+            const tokenURI = metadataUri;
+
+            // Mine salt from nad.fun (ensures token address ends in 7777)
+            const { salt } = await mineSaltFromNadFun({
+              creator: ATOMIC_LAUNCHER_ADDR,
+              name: sanitizedName,
+              symbol: sanitizedSymbol,
+              metadataUri,
+            });
 
             const totalValue = deployFee + devBuyEth + liquidityEth + volumeEth;
 
@@ -2048,7 +2079,20 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
             console.log(`[Launch] Atomic launch complete: token=${tokenAddress} tx=${txHash}`);
 
-            // Insert eigen config
+            // Compute V4 pool ID (atomic launcher creates pool with fee=9900, tickSpacing=198, hooks=0x0)
+            const ATOMIC_LP_FEE = 9900;
+            const ATOMIC_LP_TICK_SPACING = 198;
+            const computedPoolId = computeV4PoolId(
+              ZERO_ADDRESS,
+              tokenAddress,
+              ATOMIC_LP_FEE,
+              ATOMIC_LP_TICK_SPACING,
+              ZERO_ADDRESS,
+            );
+            lpPoolId = computedPoolId;
+            console.log(`[Launch] Computed V4 pool ID: ${computedPoolId}`);
+
+            // Insert eigen config with LP pool data
             insertEigenConfig({
               eigenId,
               tokenAddress,
@@ -2069,6 +2113,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
               gasBudgetEth: parseFloat(formatEther(gasBudget)),
               protocolFeeEth: parseFloat(formatEther(protocolFee)),
               poolVersion: 'atomic',
+              lpPoolId: computedPoolId,
+              lpPoolFee: ATOMIC_LP_FEE,
+              lpPoolTickSpacing: ATOMIC_LP_TICK_SPACING,
             });
             insertProtocolFee(eigenId, formatEther(protocolFee), 'launch');
 
@@ -2134,7 +2181,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
               tokenSymbol: sanitizedSymbol,
               eigenId,
               agent8004Id,
-              poolId: null,
+              poolId: lpPoolId || null,
               allocation: {
                 totalEth: formatEther(totalEthReceived),
                 devBuyEth: formatEther(devBuyEth),
@@ -3699,8 +3746,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         return json(res, { error: `Unknown package: ${packageId}` }, 400);
       }
 
-      // Check for x402 payment proof (base64-encoded signed payload)
-      const xPayment = req.headers['x-payment'] as string | undefined;
+      // Check for x402 payment proof (v2: PAYMENT-SIGNATURE, v1: X-PAYMENT)
+      const xPayment = getPaymentHeader(req.headers);
       const paymentTxHash = xPayment ? derivePaymentKey(xPayment) : undefined;
 
       if (paymentTxHash && isPaymentUsed(paymentTxHash)) {
@@ -3726,7 +3773,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       if (!xPayment || !paymentTxHash) {
         // No payment — respond 402 with x402-compliant payment requirements
         const paymentRequired = build402Response(pkg, path);
-        res.writeHead(402, { 'Content-Type': 'application/json' });
+        res.writeHead(402, build402Headers(paymentRequired));
         res.end(JSON.stringify(paymentRequired));
         return;
       }

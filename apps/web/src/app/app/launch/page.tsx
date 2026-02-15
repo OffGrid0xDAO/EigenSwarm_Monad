@@ -116,8 +116,10 @@ export default function LaunchPage() {
   // Compute total MON and allocation from Monad UI fields
   const devBuyMonNum = parseFloat(devBuyMon) || 0;
   const v4LpMonNum = seedV4 ? (parseFloat(v4LpMon) || 0) : 0;
-  const monadTotalMon = devBuyMonNum + v4LpMonNum;
-  const monadDevBuyPct = monadTotalMon > 0 ? Math.round((devBuyMonNum / monadTotalMon) * 100) : 60;
+  const NADFUN_DEPLOY_FEE = 10; // nad.fun deploy fee (fixed)
+  const monadUserMon = devBuyMonNum + v4LpMonNum; // user-specified allocation
+  const monadTotalMon = monadUserMon > 0 ? monadUserMon + NADFUN_DEPLOY_FEE : 0; // includes deploy fee
+  const monadDevBuyPct = monadUserMon > 0 ? Math.round((devBuyMonNum / monadUserMon) * 100) : 60;
   const monadLpPct = 100 - monadDevBuyPct;
 
   async function handleMonadLaunch() {
@@ -866,7 +868,7 @@ export default function LaunchPage() {
                 : phase === 'registering'
                   ? 'Registering...'
                   : isMonad
-                    ? `Launch on Monad (${monadTotalMon} MON)`
+                    ? `Launch on Monad (${monadTotalMon} MON incl. ${NADFUN_DEPLOY_FEE} fee)`
                     : 'Launch Token & Deploy Eigen'}
         </GlowButton>
       </div>
