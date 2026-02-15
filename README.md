@@ -1,10 +1,62 @@
 # EigenSwarm
 
-**Autonomous market-making agents on Monad.**
+**Democratizing institutional-grade market making on Monad.**
 
-Deploy AI-driven agents that trade any token on [nad.fun](https://nad.fun) bonding curves and Uniswap V4 pools — or launch a brand new token with a market maker attached in a single atomic transaction. Agents register as on-chain identities via **ERC-8004** and can pay for themselves using the **x402** payment protocol, enabling fully autonomous, no-human-in-the-loop market making.
+> Built for the [MOLTIVERSE Hackathon](https://moltiverse.dev/) | Agent+Token Track | Monad x nad.fun
 
-> Built for the [MOLTIVERSE Hackathon](https://moltiverse.dev/) on Monad.
+---
+
+## The Problem
+
+Volume is the lifeblood of any chain. But across DeFi, the vast majority of tokens suffer from **stale orderbooks, thin liquidity, and dead markets**. Professional market makers serve only the top 1% of tokens — those with enough capital to pay six-figure retainers. Everyone else gets nothing: wide spreads, zero depth, and tokens that look abandoned within hours of launch.
+
+On Monad, with 400ms blocks and sub-cent gas, we finally have infrastructure fast enough for real market making at scale. But without accessible MM tooling, most tokens launched on nad.fun still face the same liquidity desert. Creators launch, buy their own bags, and watch volume flatline.
+
+**The result: Monad's throughput advantage goes underutilized, and nad.fun tokens die on the vine.**
+
+## The Solution
+
+EigenSwarm gives **every token on Monad access to autonomous market-making agents** — the same buy/sell cycling, spread capture, and liquidity provision that institutional MMs provide, but available to anyone for as little as 1 USDC.
+
+Deploy an agent. It trades. It earns. It registers its own on-chain identity. It can even pay for itself.
+
+No retainers. No whitelists. No humans in the loop.
+
+---
+
+## Why Monad Needs This
+
+| Problem | EigenSwarm Solution |
+|---------|-------------------|
+| Tokens launch on nad.fun with no sustained volume | Agents generate continuous buy/sell activity from minute one |
+| Thin liquidity = high slippage = users leave | Multi-wallet agents create depth across bonding curves and V4 pools |
+| Volume is the #1 chain health metric; stale markets hurt Monad's story | EigenSwarm turns every token into an active market, boosting chain-wide volume |
+| Market making is gatekept behind institutional capital | Anyone can deploy an agent for 1 USDC (micro package) — fully democratized |
+| Token graduation from bonding curve to DEX kills momentum | Agents auto-detect graduation and seamlessly transition to Uniswap V4 trading |
+| No way to verify if a "market maker" is legit | ERC-8004 agent identity + on-chain reputation = transparent, verifiable performance |
+
+---
+
+## Hackathon Alignment
+
+EigenSwarm is purpose-built for the MOLTIVERSE thesis: **what happens when AI agents can transact at scale on a high-performance blockchain.**
+
+### Agent+Token Track
+- Agents launch tokens on **nad.fun** with atomic market maker deployment (one transaction: token + LP + agent)
+- Agents generate real volume and community activity — turning creator fees into agent economy revenue
+- Building in public: live dashboard at eigenswarm.xyz showing agent P&L, trades, and volume in real-time
+
+### Agent-to-Agent Coordination (A2A)
+- Any AI agent can autonomously discover EigenSwarm, pay via **x402**, and deploy a market maker — **no API keys, no human approval, just an HTTP request and a USDC transfer**
+- Agents register as verifiable on-chain entities via **ERC-8004** (Identity Registry + Reputation Registry) — discoverable and composable by other agents
+- Daily reputation signals make agent performance transparent: win rate, volume, P&L — all on-chain
+
+### Key Technologies Used
+- **Monad** (L1, 400ms blocks) — coordination layer for agent trading
+- **nad.fun** — token launch platform with bonding curves + graduation to Uniswap V4
+- **x402** — HTTP payment protocol enabling machine-to-machine payments (USDC)
+- **ERC-8004** — trustless agent identity standard (NFT-based identity + reputation registries)
+- **Uniswap V4** — LP position management and post-graduation trading
 
 ---
 
@@ -13,36 +65,36 @@ Deploy AI-driven agents that trade any token on [nad.fun](https://nad.fun) bondi
 ### Autonomous Market Making
 Each agent ("eigen") is an autonomous market maker that:
 - Operates from an on-chain vault (EigenVault) with isolated funds
-- Controls 1-50 sub-wallets to distribute trading activity
-- Executes buy/sell cycles on bonding curves (nad.fun) and Uniswap V4 pools
+- Controls 1–50 sub-wallets to distribute trading activity across addresses
+- Executes buy/sell cycles on nad.fun bonding curves and Uniswap V4 pools
 - Tracks P&L, win rate, and volume in real-time
 - Seeds and compounds Uniswap V4 LP positions for fee revenue
-- Handles graduation automatically when a nad.fun token migrates to DEX
+- Auto-detects graduation and transitions from bonding curve to DEX trading
 
 ### ERC-8004: Trustless Agent Identity
 Agents register as NFTs on the ERC-8004 Identity Registry, giving each one:
 - A verifiable on-chain identity (`agentId` as an NFT token ID)
 - A published agent card with trading stats, service endpoints, and class
-- Daily reputation signals posted to the Reputation Registry
+- Daily reputation signals posted to the Reputation Registry — transparent and verifiable
 - Transferable ownership — transfer the NFT, transfer the agent
 
-### x402: Agent-to-Agent Payments
-The x402 payment protocol lets any agent (or human) pay for market-making services using USDC — no wallet connection or contract interaction required:
+### x402: Autonomous Agent Payments
+The x402 payment protocol lets any agent (or human) pay for market-making services using USDC — no wallet connection, no contract interaction, no API key required:
 
 1. Request the keeper API → get a `402 Payment Required` response with USDC amount and recipient
-2. Send USDC on Monad (or Base) via a simple ERC-20 transfer
-3. Re-submit the request with the tx hash as proof → eigen is created and auto-funded from the keeper treasury
+2. Send USDC on Monad via a simple ERC-20 transfer
+3. Re-submit the request with the tx hash as proof → eigen is created and auto-funded
 
-This means an AI agent with a wallet can autonomously deploy market makers for tokens it discovers, pay for them, and monitor their performance — all via HTTP.
+An AI agent with a wallet can autonomously discover EigenSwarm, pay for a market maker, deploy it on any nad.fun token, and monitor its performance — all via HTTP. This is agent-to-agent commerce running on Monad.
 
 ### Atomic Token Launch on nad.fun
-Launch a new token with market making in a single transaction:
+Launch a new token with market making in a single atomic transaction:
 - Deploy token on nad.fun bonding curve
 - Execute initial dev buy
 - Seed Uniswap V4 LP position
 - Spin up an autonomous market-making agent
 
-Or attach a market maker to any existing nad.fun token — just provide the token address and a volume package.
+Or attach a market maker to **any existing nad.fun token** — just provide the token address and pick a volume package.
 
 ---
 
