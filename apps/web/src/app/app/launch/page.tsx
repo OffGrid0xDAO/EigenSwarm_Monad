@@ -17,7 +17,7 @@ import {
 import { useSignedRegister } from '@/hooks/useSignedAction';
 import { AppPageShell } from '@/components/layout/AppPageShell';
 import { ChainSelector } from '@/components/ui/ChainSelector';
-import { createMonadToken as apiCreateMonadToken, seedMonadV4Pool, launchToken } from '@/lib/api';
+import { launchToken } from '@/lib/api';
 
 const SUPPORTED_CHAINS = [
   { id: 143, name: 'Monad', token: 'MON' },
@@ -29,8 +29,6 @@ type LaunchPhase =
   | 'deploying_token'
   | 'bundled_launch'
   | 'minting_agent'
-  | 'creating_monad_token'
-  | 'seeding_v4_pool'
   | 'registering'
   | 'complete';
 
@@ -95,17 +93,6 @@ export default function LaunchPage() {
   const [lpError, setLpError] = useState('');
   const [regSig, setRegSig] = useState<{ signature: string; timestamp: number } | null>(null);
   const [lpPoolId, setLpPoolId] = useState('');
-  const [monadResult, setMonadResult] = useState<{
-    eigenId: string;
-    tokenAddress: string;
-    txHash: string;
-    imageUri?: string;
-  } | null>(null);
-  const [v4Result, setV4Result] = useState<{
-    poolId: string;
-    tokenId: string;
-    txHash: string;
-  } | null>(null);
 
   const classConfig = CLASS_CONFIGS[selectedClass];
   const { signRegister } = useSignedRegister();
@@ -123,72 +110,118 @@ export default function LaunchPage() {
   const lpPortion = deployableEth - devBuyPortion;
 
   // ── Monad Launch Flow ──────────────────────────────────────────────
+  // Single user tx: send MON to keeper, keeper does atomic launch
+  // (nad.fun deploy + dev buy + V4 LP + vault — all in one tx)
+
+  // Compute total MON and allocation from Monad UI fields
+  const devBuyMonNum = parseFloat(devBuyMon) || 0;
+  const v4LpMonNum = seedV4 ? (parseFloat(v4LpMon) || 0) : 0;
+  const monadTotalMon = devBuyMonNum + v4LpMonNum;
+  const monadDevBuyPct = monadTotalMon > 0 ? Math.round((devBuyMonNum / monadTotalMon) * 100) : 60;
+  const monadLpPct = 100 - monadDevBuyPct;
 
   async function handleMonadLaunch() {
-    if (!address || !walletClient) return;
+    // Resolve wallet client — prefer wagmi, fall back to Privy wallet provider
+    let activeWalletClient = walletClient as any;
+    if (!activeWalletClient && wallets?.[0] && address) {
+      try {
+        const provider = await wallets[0].getEthereumProvider();
+        const { createWalletClient: createWC, custom } = await import('viem');
+        activeWalletClient = createWC({
+          account: address as `0x${string}`,
+          chain: { id: 143, name: 'Monad', nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 }, rpcUrls: { default: { http: ['https://rpc.monad.xyz'] } } },
+          transport: custom(provider),
+        });
+      } catch (err) {
+        console.error('[Launch] Failed to get wallet client:', err);
+      }
+    }
+
+    if (!address || !activeWalletClient || !publicClient) {
+      const missing = !address ? 'address' : !activeWalletClient ? 'walletClient' : 'publicClient';
+      setClankerError(`Connect your wallet first (missing: ${missing})`);
+      return;
+    }
+
+    if (monadTotalMon <= 0) {
+      setClankerError('Set dev buy and/or V4 LP amount');
+      return;
+    }
 
     // Sign authentication message
     let sig: { signature: string; timestamp: number };
     try {
-      sig = await signRegister(eigenId);
+      sig = await signRegister('pending');
+      setRegSig(sig);
     } catch {
       return; // User rejected
     }
 
-    // Phase 1: Create token on nad.fun (auto-registers eigen config)
-    setPhase('creating_monad_token');
     setClankerError('');
     setLpError('');
 
+    // Phase 1: Send MON to keeper
+    setPhase('deploying_token');
+
+    const KEEPER_API_URL = process.env.NEXT_PUBLIC_KEEPER_API_URL || 'http://localhost:3001';
+    let monTxHash: `0x${string}`;
     try {
-      const result = await apiCreateMonadToken({
-        eigenId,
-        name: tokenName,
-        symbol: tokenSymbol,
-        description: tokenDesc,
-        imageUrl: tokenImage || undefined,
-        devBuyMon: parseFloat(devBuyMon) > 0 ? devBuyMon : undefined,
-        class: selectedClass,
-        website: website || undefined,
-        twitter: twitter || undefined,
-        telegram: telegram || undefined,
-        ownerAddress: address,
-        signature: sig.signature,
-        timestamp: sig.timestamp,
-      });
-
-      setMonadResult({
-        eigenId: result.eigenId,
-        tokenAddress: result.tokenAddress,
-        txHash: result.txHash,
-        imageUri: result.imageUri,
-      });
-      setDeployedTokenAddress(result.tokenAddress);
-      console.log(`[Launch] Monad token created: ${result.tokenAddress} eigen=${result.eigenId}`);
-
-      // Phase 2: Optionally seed V4 pool
-      if (seedV4 && parseFloat(v4LpMon) > 0) {
-        setPhase('seeding_v4_pool');
-
-        const v4 = await seedMonadV4Pool(result.eigenId, {
-          ownerAddress: address,
-          signature: sig.signature,
-          timestamp: sig.timestamp,
-          monAmount: v4LpMon,
-        });
-
-        setV4Result({ poolId: v4.poolId, tokenId: v4.tokenId, txHash: v4.txHash });
-        console.log(`[Launch] V4 pool seeded: poolId=${v4.poolId}`);
+      let depositAddress: string;
+      try {
+        const infoRes = await fetch(`${KEEPER_API_URL}/api/launch/info`);
+        if (!infoRes.ok) throw new Error('info endpoint unavailable');
+        const info = await infoRes.json();
+        depositAddress = info.depositAddress;
+      } catch {
+        depositAddress = process.env.NEXT_PUBLIC_KEEPER_ADDRESS || '';
       }
 
+      monTxHash = await activeWalletClient.sendTransaction({
+        to: depositAddress as `0x${string}`,
+        value: parseEther(monadTotalMon.toString()),
+      });
+      console.log(`[Launch] MON sent to keeper: ${monTxHash} (${monadTotalMon} MON)`);
+      await publicClient.waitForTransactionReceipt({ hash: monTxHash });
+    } catch (err: any) {
+      console.error('[Launch] MON transfer failed:', err);
+      setClankerError(err?.shortMessage || err?.message || 'MON transfer failed');
+      setPhase('configure');
+      return;
+    }
+
+    // Phase 2: Keeper does atomic launch (nad.fun + dev buy + V4 LP + vault)
+    setPhase('bundled_launch');
+
+    try {
+      const result = await launchToken(monTxHash, {
+        name: tokenName,
+        symbol: tokenSymbol,
+        image: tokenImage || undefined,
+        description: tokenDesc || undefined,
+        class: selectedClass,
+        allocation: {
+          devBuyPct: monadDevBuyPct,
+          liquidityPct: monadLpPct,
+          volumePct: 0,
+        },
+        ownerAddress: address,
+        ...sig,
+      });
+
+      setDeployedTokenAddress(result.tokenAddress);
+      if (result.poolId) setLpPoolId(result.poolId);
+      if (result.agent8004Id) setAgent8004Id(result.agent8004Id);
+      setLaunchTxHash(result.txHashes.deploy);
+
+      console.log(`[Launch] Atomic launch complete: token=${result.tokenAddress} eigen=${result.eigenId}`);
       setPhase('complete');
 
       setTimeout(() => {
         router.push(`/app/eigen/${result.eigenId}`);
       }, 1500);
     } catch (err: any) {
-      console.error('[Launch] Monad launch failed:', err);
-      setClankerError(err?.message || 'Token creation failed');
+      console.error('[Launch] Atomic launch failed:', err);
+      setClankerError(err?.message || 'Atomic launch failed');
       setPhase('configure');
     }
   }
@@ -352,20 +385,16 @@ export default function LaunchPage() {
               {isMonad ? (
                 <>
                   <PhaseStep
-                    label="Create Token"
-                    active={phase === 'creating_monad_token'}
-                    done={['seeding_v4_pool', 'complete'].includes(phase)}
+                    label="Send MON"
+                    active={phase === 'deploying_token'}
+                    done={['bundled_launch', 'complete'].includes(phase)}
                   />
-                  {seedV4 && (
-                    <>
-                      <div className="h-px flex-1 bg-border-subtle" />
-                      <PhaseStep
-                        label="Seed V4 Pool"
-                        active={phase === 'seeding_v4_pool'}
-                        done={phase === 'complete'}
-                      />
-                    </>
-                  )}
+                  <div className="h-px flex-1 bg-border-subtle" />
+                  <PhaseStep
+                    label="Atomic Launch"
+                    active={phase === 'bundled_launch'}
+                    done={phase === 'complete'}
+                  />
                   <div className="h-px flex-1 bg-border-subtle" />
                   <PhaseStep label="Complete" active={false} done={phase === 'complete'} />
                 </>
@@ -512,7 +541,7 @@ export default function LaunchPage() {
                       className="w-full bg-bg-elevated border border-border-subtle rounded-lg px-3.5 py-2.5 text-sm font-mono text-txt-primary focus:outline-none focus:border-border-hover transition-colors disabled:opacity-50"
                     />
                     <p className="text-caption text-txt-disabled mt-1">
-                      Atomic dev buy during token creation on nad.fun bonding curve
+                      Dev buy on bonding curve (included in atomic launch)
                     </p>
                   </div>
 
@@ -809,17 +838,11 @@ export default function LaunchPage() {
           </div>
         )}
 
-        {monadResult && (
+        {isMonad && deployedTokenAddress && launchTxHash && (
           <div className="subtle-card p-4 space-y-2">
-            <p className="text-xs font-mono text-txt-muted">Token: {monadResult.tokenAddress}</p>
-            <p className="text-xs font-mono text-txt-muted">Eigen ID: {monadResult.eigenId}</p>
-            <p className="text-xs font-mono text-txt-muted">Tx: {monadResult.txHash}</p>
-            {v4Result && (
-              <>
-                <p className="text-xs font-mono text-txt-muted">V4 Pool: {v4Result.poolId}</p>
-                <p className="text-xs font-mono text-txt-muted">V4 Tx: {v4Result.txHash}</p>
-              </>
-            )}
+            <p className="text-xs font-mono text-txt-muted">Token: {deployedTokenAddress}</p>
+            {lpPoolId && <p className="text-xs font-mono text-txt-muted">V4 Pool: {lpPoolId}</p>}
+            <p className="text-xs font-mono text-txt-muted">Tx: {launchTxHash}</p>
           </div>
         )}
 
@@ -829,26 +852,22 @@ export default function LaunchPage() {
           className="w-full"
           disabled={
             !tokenName || !tokenSymbol || isLaunching || phase === 'complete' ||
-            (!isMonad && !hasEth)
+            (isMonad ? monadTotalMon <= 0 : !hasEth)
           }
           loading={isLaunching}
           onClick={handleLaunch}
         >
           {phase === 'complete'
             ? 'Launched!'
-            : phase === 'creating_monad_token'
-              ? 'Creating Token on nad.fun...'
-              : phase === 'seeding_v4_pool'
-                ? 'Seeding V4 Pool...'
-                : phase === 'deploying_token'
-                  ? 'Deploying Token...'
-                  : phase === 'bundled_launch'
-                    ? 'Seeding LP + Creating Eigen...'
-                    : phase === 'registering'
-                      ? 'Registering...'
-                      : isMonad
-                        ? 'Launch on Monad'
-                        : 'Launch Token & Deploy Eigen'}
+            : phase === 'deploying_token'
+              ? `Sending ${nativeToken}...`
+              : phase === 'bundled_launch'
+                ? 'Atomic Launch in Progress...'
+                : phase === 'registering'
+                  ? 'Registering...'
+                  : isMonad
+                    ? `Launch on Monad (${monadTotalMon} MON)`
+                    : 'Launch Token & Deploy Eigen'}
         </GlowButton>
       </div>
     </AppPageShell>

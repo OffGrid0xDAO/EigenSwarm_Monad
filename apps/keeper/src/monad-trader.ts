@@ -36,6 +36,7 @@ import { buildMarketContext } from './ai-context';
 import { getChainRpcUrl, EIGENLP_FEE, EIGENLP_TICK_SPACING, UNISWAP_V4_UNIVERSAL_ROUTER, UNISWAP_V4_POOL_MANAGER, PERMIT2_ADDRESS } from '@eigenswarm/shared';
 import { eigenIdToBytes32 } from '@eigenswarm/shared';
 import { encodeSwap, type PoolInfo } from './swap-encoder';
+import { getTokenPriceEth } from './price-oracle';
 
 const MONAD_CHAIN_ID = 143;
 const MONAD_RPC = getChainRpcUrl(MONAD_CHAIN_ID, process.env as Record<string, string | undefined>);
@@ -327,18 +328,22 @@ const PERMIT2_ABI = [
 ] as const;
 
 /**
- * Build a V4 PoolInfo for EigenLP native ETH pools.
- * EigenLP pools: currency0=address(0), no hooks, fee=9900, tickSpacing=198.
+ * Build a V4 PoolInfo from the eigen's DB config.
+ * Returns null if no V4 pool has been created yet (lp_pool_id not set).
  */
-function buildEigenLPPool(tokenAddress: Address): PoolInfo {
+function buildV4PoolFromConfig(tokenAddress: Address, config: EigenConfig): PoolInfo | null {
+  const hasPool = config.lp_pool_id && !/^0x0+$/.test(config.lp_pool_id);
+  if (!hasPool) return null;
+
   return {
     version: 'v4',
     poolAddress: UNISWAP_V4_POOL_MANAGER as string,
-    fee: EIGENLP_FEE,
-    tickSpacing: EIGENLP_TICK_SPACING,
+    fee: config.lp_pool_fee ?? EIGENLP_FEE,
+    tickSpacing: config.lp_pool_tick_spacing ?? EIGENLP_TICK_SPACING,
     hooks: ZERO_ADDRESS,
     token0: ZERO_ADDRESS,
     token1: tokenAddress,
+    poolId: config.lp_pool_id as `0x${string}`,
     isWETHPair: false,
   };
 }
@@ -485,24 +490,24 @@ async function monadV4Sell(
 
 // ── Get Token Price ─────────────────────────────────────────────────────
 
-async function getMonadTokenPrice(tokenAddress: Address): Promise<number> {
+async function getMonadTokenPrice(tokenAddress: Address, v4Pool: PoolInfo | null = null): Promise<number> {
+  // When we have our own V4 pool, read price directly from it — never route through external pools
+  if (v4Pool) {
+    try {
+      const price = await getTokenPriceEth(tokenAddress as `0x${string}`, v4Pool);
+      if (price > 0) return price;
+    } catch (error) {
+      console.warn(`[MonadTrader] V4 pool price read failed: ${(error as Error).message}`);
+    }
+    // Don't fall back to nad.fun/DexScreener for graduated tokens — return 0 so we skip the trade
+    return 0;
+  }
+
+  // Pre-graduation: use nad.fun SDK (bonding curve)
   try {
-    // Price = MON per token. Quote: how much MON for 1 token (sell 1e18 tokens)?
     const quote = await getMonadQuote(tokenAddress, parseEther('1'), false);
     return parseFloat(formatEther(quote.amount));
   } catch {
-    // Fallback: try DexScreener
-    try {
-      const res = await fetch(
-        `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`,
-        { signal: AbortSignal.timeout(5000) },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const pair = data.pairs?.find((p: any) => p.chainId === 'monad');
-        if (pair?.priceNative) return parseFloat(pair.priceNative);
-      }
-    } catch { }
     return 0;
   }
 }
@@ -606,29 +611,21 @@ async function processMonadEigen(config: EigenConfig, aiConfig: AIConfig): Promi
   }
   eigen.ethBalance = parseFloat(formatEther(totalMon));
 
-  // Check graduation status and set pool metadata accordingly
-  const isGraduated = config.graduation_status === 'graduated';
-  const v4Pool = isGraduated ? buildEigenLPPool(tokenAddress) : null;
+  // Use our own V4 pool if it exists (lp_pool_id set in DB), regardless of graduation status
+  const v4Pool = buildV4PoolFromConfig(tokenAddress, config);
 
-  // Get token price for pool data
-  const price = await getMonadTokenPrice(tokenAddress);
+  if (!v4Pool) {
+    console.log(`[MonadTrader] ${config.eigen_id}: no V4 pool yet (lp_pool_id not set), skipping`);
+    return;
+  }
+
+  // Get token price directly from our V4 pool
+  const price = await getMonadTokenPrice(tokenAddress, v4Pool);
   if (price > 0) {
-    insertPriceSnapshot(config.token_address, price, isGraduated ? 'v4' : 'nadfun');
+    insertPriceSnapshot(config.token_address, price, 'v4');
   }
 
-  // Build pool info for decision engine compatibility
-  if (v4Pool) {
-    eigen.pool = v4Pool;
-  } else {
-    const poolAddress = (config.graduated_pool_address || ZERO_ADDRESS) as Address;
-    eigen.pool = {
-      version: 'nadfun' as any,
-      token0: ZERO_ADDRESS,
-      token1: tokenAddress,
-      fee: 10000,
-      poolAddress,
-    };
-  }
+  eigen.pool = v4Pool;
 
   // Check deployment phase
   const deployState = await getDeploymentState(eigen);
@@ -696,21 +693,16 @@ async function executeMonadBuy(
   decision: TradeDecision,
   wallet: DerivedWallet,
   price: number,
-  v4Pool: PoolInfo | null = null,
+  v4Pool: PoolInfo,
 ): Promise<void> {
   if (!decision.ethAmount) return;
   const monAmount = decision.ethAmount;
   const monNum = parseFloat(formatEther(monAmount));
 
-  const routerType = v4Pool ? 'v4' : 'nadfun-curve';
-  const poolVersion = v4Pool ? 'v4' : 'nadfun';
-
   try {
-    const { txHash, tokenAmount } = v4Pool
-      ? await monadV4Buy(eigen.config.token_address as Address, monAmount, wallet, v4Pool)
-      : await monadBuy(eigen.config.token_address as Address, monAmount, wallet);
+    const { txHash, tokenAmount } = await monadV4Buy(eigen.config.token_address as Address, monAmount, wallet, v4Pool);
 
-    console.log(`[MonadTrader] BUY ${monNum.toFixed(4)} MON → ${eigen.config.token_symbol} (${eigen.eigenId}) router=${routerType} wallet=${wallet.address.slice(0, 8)}... tx=${txHash}`);
+    console.log(`[MonadTrader] BUY ${monNum.toFixed(4)} MON → ${eigen.config.token_symbol} (${eigen.eigenId}) router=v4 wallet=${wallet.address.slice(0, 8)}... tx=${txHash}`);
 
     // Update position tracking
     if (tokenAmount > 0n) {
@@ -735,8 +727,8 @@ async function executeMonadBuy(
       priceEth: price,
       gasCost: '0',
       txHash,
-      router: routerType,
-      poolVersion,
+      router: 'v4',
+      poolVersion: 'v4',
     });
 
     recordWalletTrade(eigen.eigenId, wallet.index);
@@ -752,21 +744,16 @@ async function executeMonadSell(
   decision: TradeDecision,
   wallet: DerivedWallet,
   price: number,
-  v4Pool: PoolInfo | null = null,
+  v4Pool: PoolInfo,
 ): Promise<void> {
   if (!decision.tokenAmount) return;
   const sellAmount = decision.tokenAmount;
 
-  const routerType = v4Pool ? 'v4' : 'nadfun-curve';
-  const poolVersion = v4Pool ? 'v4' : 'nadfun';
-
   try {
-    const { txHash, monReceived } = v4Pool
-      ? await monadV4Sell(eigen.config.token_address as Address, sellAmount, wallet, v4Pool)
-      : await monadSell(eigen.config.token_address as Address, sellAmount, wallet);
+    const { txHash, monReceived } = await monadV4Sell(eigen.config.token_address as Address, sellAmount, wallet, v4Pool);
 
     const monNum = parseFloat(formatEther(monReceived));
-    console.log(`[MonadTrader] SELL ${(Number(sellAmount) * 1e-18).toFixed(4)} ${eigen.config.token_symbol} → ${monNum.toFixed(4)} MON (${eigen.eigenId}) router=${routerType} tx=${txHash}`);
+    console.log(`[MonadTrader] SELL ${(Number(sellAmount) * 1e-18).toFixed(4)} ${eigen.config.token_symbol} → ${monNum.toFixed(4)} MON (${eigen.eigenId}) router=v4 tx=${txHash}`);
 
     // Update position tracking
     const pnl = updatePositionOnSell(
@@ -790,8 +777,8 @@ async function executeMonadSell(
       pnlRealized: pnl,
       gasCost: '0',
       txHash,
-      router: routerType,
-      poolVersion,
+      router: 'v4',
+      poolVersion: 'v4',
     });
 
     recordWalletTrade(eigen.eigenId, wallet.index);
@@ -806,14 +793,11 @@ async function executeMonadDeploymentBurst(
   eigen: EigenState,
   wallets: DerivedWallet[],
   emptyWalletIndices: number[],
-  v4Pool: PoolInfo | null = null,
+  v4Pool: PoolInfo,
 ): Promise<void> {
   const tokenAddress = eigen.config.token_address as Address;
   const monPerWallet = eigen.ethBalance / (emptyWalletIndices.length + 1);
-  const price = await getMonadTokenPrice(tokenAddress);
-
-  const routerType = v4Pool ? 'v4' : 'nadfun-curve';
-  const poolVersion = v4Pool ? 'v4' : 'nadfun';
+  const price = await getMonadTokenPrice(tokenAddress, v4Pool);
 
   for (const idx of emptyWalletIndices) {
     const wallet = wallets.find((w) => w.index === idx);
@@ -825,11 +809,9 @@ async function executeMonadDeploymentBurst(
     await fundMonadWalletIfNeeded(wallet);
 
     try {
-      const { txHash, tokenAmount } = v4Pool
-        ? await monadV4Buy(tokenAddress, buyAmount, wallet, v4Pool)
-        : await monadBuy(tokenAddress, buyAmount, wallet);
+      const { txHash, tokenAmount } = await monadV4Buy(tokenAddress, buyAmount, wallet, v4Pool);
 
-      console.log(`[MonadTrader] DEPLOY BUY ${formatEther(buyAmount)} MON → ${eigen.config.token_symbol} router=${routerType} wallet=${wallet.address.slice(0, 8)}... tx=${txHash}`);
+      console.log(`[MonadTrader] DEPLOY BUY ${formatEther(buyAmount)} MON → ${eigen.config.token_symbol} router=v4 wallet=${wallet.address.slice(0, 8)}... tx=${txHash}`);
 
       if (tokenAmount > 0n) {
         updatePositionOnBuy(eigen.eigenId, wallet.address, eigen.config.token_address, tokenAmount, parseFloat(formatEther(buyAmount)), price);
@@ -845,8 +827,8 @@ async function executeMonadDeploymentBurst(
         priceEth: price,
         gasCost: '0',
         txHash,
-        router: routerType,
-        poolVersion,
+        router: 'v4',
+        poolVersion: 'v4',
       });
 
       recordWalletTrade(eigen.eigenId, wallet.index);

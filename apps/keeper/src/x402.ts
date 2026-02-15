@@ -149,7 +149,7 @@ export async function verifyAndSettlePayment(
     console.log(`[x402] TEST MODE — auto-approving payment for ${amountUsdc} USDC`);
     return {
       valid: true,
-      from: '0xTEST0000000000000000000000000000deadbeef',
+      from: '0xdead000000000000000000000000000000000402',
       amount: amountUsdc,
       settleTxHash: '0xTEST_SETTLE_TX',
     };

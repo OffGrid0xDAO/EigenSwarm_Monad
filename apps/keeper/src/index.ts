@@ -5,7 +5,7 @@ import { startApi } from './api';
 import { executeTradeCycle, setAIConfig } from './trader';
 import { checkPonderHealth } from './ponder';
 import { snapshotAllPrices } from './price-oracle';
-import { resolvePool } from './pool-resolver';
+import { resolvePool, computeV4PoolId, ZERO_ADDRESS } from './pool-resolver';
 import { discoverEigensFromChain } from './recovery';
 import { compoundAllFees } from './lp-compounder';
 import { startGraduationMonitor } from './monad-trader';
@@ -62,9 +62,11 @@ async function main() {
   // 1a. Auto-seed EIGEN token config if DB is fresh (idempotent)
   if (!getEigenConfig('eigen-eigen-1771171519177')) {
     console.log('[Keeper] Seeding EIGEN token config...');
+    const eigenTokenAddress = '0xFa00f6635D32782E0a9fCb4250C68989c5577777' as `0x${string}`;
+    const eigenPoolId = computeV4PoolId(ZERO_ADDRESS, eigenTokenAddress, 9900, 198, ZERO_ADDRESS);
     insertEigenConfig({
       eigenId: 'eigen-eigen-1771171519177',
-      tokenAddress: '0xFa00f6635D32782E0a9fCb4250C68989c5577777',
+      tokenAddress: eigenTokenAddress,
       tokenSymbol: 'EIGEN',
       tokenName: 'EigenSwarm',
       ownerAddress: '0xA7708f216B35A8cCAF7c39486ACFba4934613263',
@@ -74,14 +76,13 @@ async function main() {
       orderSizeMin: 0.05,
       orderSizeMax: 0.2,
       walletCount: 5,
-      lpPoolId: '',
+      lpPoolId: eigenPoolId,
       lpTokenId: 0,
       lpPoolFee: 9900,
       lpPoolTickSpacing: 198,
       lpContractAddress: '0xEf8b421B15Dd0Aa59392431753029A184F3eEc54',
     });
-    updateGraduationStatus('eigen-eigen-1771171519177', 'graduated');
-    console.log('[Keeper] EIGEN token seeded (graduated/v4, 5 wallets)');
+    console.log(`[Keeper] EIGEN token seeded (v4 pool=${eigenPoolId.slice(0, 16)}..., 5 wallets)`);
   }
 
   // 1b. Initialize AI evaluation layer

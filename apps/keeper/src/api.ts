@@ -1743,7 +1743,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         return json(res, { error: `allocation percentages must sum to 100, got ${totalPct}` }, 400);
       }
 
-      // ── Determine payment method ────────────────────────────────────
+      // ── Determine payment chain & method ─────────────────────────────
+      const paymentChainId = typeof data.paymentChainId === 'number' && isChainSupported(data.paymentChainId)
+        ? data.paymentChainId
+        : 143;
+      const paymentNetwork: 'monad' | 'base' = paymentChainId === 8453 ? 'base' : 'monad';
+
       const ethPaymentTxHash = req.headers['x-eth-payment'] as string | undefined;
       const xPayment = req.headers['x-payment'] as string | undefined;
       // For ETH: dedup key = tx hash. For x402 USDC: dedup key = sha256 of signed payload.
@@ -1754,7 +1759,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         if (data.packageId) {
           const pkg = getPackage(data.packageId);
           if (pkg) {
-            const paymentRequired = build402Response(pkg, '/api/launch');
+            const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork);
             res.writeHead(402, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(paymentRequired));
             return;
@@ -1780,10 +1785,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       } catch {
         return json(res, { error: 'Payment already used' }, 409);
       }
-
-      const paymentChainId = typeof data.paymentChainId === 'number' && isChainSupported(data.paymentChainId)
-        ? data.paymentChainId
-        : 143;
 
       let totalEthReceived: bigint;
       let ownerAddress: string;
@@ -1854,9 +1855,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
           return json(res, { error: `Unknown package: ${data.packageId}` }, 400);
         }
 
-        const requirements = buildPaymentRequirements(pkg, '/api/launch');
-        console.log(`[Launch] Verifying x402 payment via facilitator for ${pkg.priceUSDC} USDC`);
-        const verification = await verifyAndSettlePayment(xPayment!, requirements);
+        const requirements = buildPaymentRequirements(pkg, '/api/launch', paymentNetwork);
+        console.log(`[Launch] Verifying x402 payment via facilitator for ${pkg.priceUSDC} USDC on ${paymentNetwork}`);
+        const verification = await verifyAndSettlePayment(xPayment!, requirements, paymentNetwork);
 
         if (!verification.valid) {
           deletePayment(paymentTxHash);
@@ -1882,9 +1883,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
           ).run(verification.from, verification.amount, 'pending-launch', paymentTxHash);
         } catch { /* Already recorded */ }
 
-        // Swap USDC → ETH (payment settled on Base via facilitator)
+        // Swap USDC → MON on payment chain
         try {
-          const swapResult = await swapUsdcToEth(verification.amount, 143);
+          const swapResult = await swapUsdcToEth(verification.amount, paymentChainId);
           totalEthReceived = swapResult.ethReceived;
           swapTxHash = swapResult.swapTxHash;
           console.log(`[Launch] Swapped ${verification.amount} USDC → ${formatEther(totalEthReceived)} ETH`);
@@ -1999,11 +2000,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             const defaultSqrtPriceX96 = 5602277097478614n;
             const tradingFeeBps = BigInt(Math.round(classConfig.protocolFee * 100));
             const salt = keccak256(toHex(`${sanitizedName}-${sanitizedSymbol}-${Date.now()}`));
-            const tokenURI = JSON.stringify({
+            const tokenURIObj: Record<string, string> = {
               name: sanitizedName,
               symbol: sanitizedSymbol,
               description: sanitizedDescription,
-            });
+            };
+            if (data.image) tokenURIObj.image = data.image; // base64 or URL
+            if (data.website) tokenURIObj.website = data.website;
+            if (data.twitter) tokenURIObj.twitter = data.twitter;
+            if (data.telegram) tokenURIObj.telegram = data.telegram;
+            const tokenURI = JSON.stringify(tokenURIObj);
 
             const totalValue = deployFee + devBuyEth + liquidityEth + volumeEth;
 

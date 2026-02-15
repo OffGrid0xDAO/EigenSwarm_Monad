@@ -128,8 +128,10 @@ export async function swapUsdcToEth(
 ): Promise<{ ethReceived: bigint; swapTxHash: `0x${string}` }> {
   // Test mode: skip on-chain operations
   if (process.env.X402_TEST_MODE === 'true') {
-    console.log(`[Treasury] TEST MODE — simulating USDC→ETH swap for ${usdcAmount} USDC`);
-    return { ethReceived: parseEther('0.001'), swapTxHash: '0xTEST_SWAP_TX' as `0x${string}` };
+    // Simulate ~$2500/ETH price for realistic test amounts
+    const simulatedEth = (usdcAmount / 2500).toFixed(18);
+    console.log(`[Treasury] TEST MODE — simulating USDC→ETH swap for ${usdcAmount} USDC → ${simulatedEth} ETH`);
+    return { ethReceived: parseEther(simulatedEth), swapTxHash: '0xTEST_SWAP_TX' as `0x${string}` };
   }
 
   const client = getPublicClient(chainId);
