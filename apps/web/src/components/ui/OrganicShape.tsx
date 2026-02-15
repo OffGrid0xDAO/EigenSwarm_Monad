@@ -303,28 +303,6 @@ export function OrganicCapabilities() {
               </a>
             </div>
 
-            <div className="w-[70%] mt-[clamp(1.2rem,3.2cqw,3.2rem)]">
-              <p className="text-[clamp(0.35rem,0.7cqw,0.6875rem)] text-[#B8B7C8] italic tracking-wide font-display mb-[clamp(0.2rem,0.5cqw,0.5rem)]">
-                Eigens deployed on:
-              </p>
-              <div className="marquee-container py-1">
-                <div className="marquee-track" style={{ animation: 'marquee 60s linear infinite' }}>
-                  {[...TOKEN_LOGOS, ...TOKEN_LOGOS, ...TOKEN_LOGOS, ...TOKEN_LOGOS].map((logo, i) => (
-                    <a
-                      key={`${logo.name}-${i}`}
-                      href={logo.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-[clamp(0.3rem,0.7cqw,0.75rem)] flex-shrink-0 opacity-35 hover:opacity-60 transition-opacity duration-300"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={logo.src} alt={logo.name} className="h-[clamp(1.4rem,3cqw,3.5rem)] w-[clamp(1.4rem,3cqw,3.5rem)] rounded-full object-cover grayscale-[60%]" />
-                      <span className="text-[clamp(0.6rem,1.3cqw,1.375rem)] font-semibold text-[#908FA0] tracking-tight whitespace-nowrap">{logo.name}</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </div>
 
           </div>
         </div>

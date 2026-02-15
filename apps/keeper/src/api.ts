@@ -78,7 +78,8 @@ function applyCorsAndSecurityHeaders(req: IncomingMessage, res: ServerResponse) 
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PAYMENT, X-ETH-PAYMENT, X-API-KEY');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PAYMENT, PAYMENT-SIGNATURE, X-ETH-PAYMENT, X-API-KEY');
+  res.setHeader('Access-Control-Expose-Headers', 'PAYMENT-REQUIRED');
   res.setHeader('Vary', 'Origin');
 
   // Security headers
@@ -711,25 +712,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         });
       }
 
-      // Also include Ponder eigens that have no matching config
-      for (const pe of ponderEigens) {
-        if (matchedPonderIds.has(pe.id)) continue;
-        if (ownerFilter && pe.owner.toLowerCase() !== ownerFilter) continue;
-        merged.push({
-          id: pe.id,
-          owner: pe.owner,
-          status: pe.status?.toLowerCase() || 'active',
-          balance: pe.balance,
-          totalDeposited: pe.totalDeposited,
-          totalWithdrawn: pe.totalWithdrawn,
-          totalTraded: pe.totalTraded,
-          totalFees: pe.totalFees,
-          tradeCount: pe.tradeCount,
-          createdAt: pe.createdAt,
-          config: null,
-          pnl: { totalBuys: 0, totalSells: 0, totalRealizedPnl: 0, winCount: 0, lossCount: 0, winRate: 0, tokenBalance: '0', totalCostEth: 0, totalGasCost: 0 },
-        });
-      }
+      // Skip Ponder-only eigens that have no local config.
+      // If an eigen was deleted from the keeper DB, it should not reappear
+      // from on-chain data. All eigens are created through the keeper API.
 
       return json(res, { data: merged });
     } catch (error) {
@@ -1953,18 +1938,30 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       let volumeEth = deployableEth - devBuyEth - liquidityEth; // remainder to avoid rounding loss
 
       // Monad trader trades directly from sub-wallets, not from the on-chain vault.
-      // Redirect most of the volume budget to sub-wallet funding so they have
-      // actual MON for market-making trades. Keep minimal vault deposit for contract.
+      // Always carve a minimum trading budget from LP so sub-wallets can market-make.
+      // Frontend may send volumePct=0, so we enforce a floor here.
       const MIN_VAULT_DEPOSIT = 10000000000000n; // 0.00001 ETH minimum
-      const vaultVolumeEth = MIN_VAULT_DEPOSIT; // minimal deposit to satisfy contract
-      const subWalletTradingBudget = volumeEth > MIN_VAULT_DEPOSIT
-        ? volumeEth - MIN_VAULT_DEPOSIT
-        : 0n;
-      volumeEth = vaultVolumeEth;
+      const MIN_TRADING_PCT = 10n; // At least 10% of deployable goes to sub-wallet trading
+      const minTradingBudget = (deployableEth * MIN_TRADING_PCT) / 100n;
 
-      // If LP allocation is big enough, carve a small vault deposit from it
+      // If volume allocation is below the minimum, carve from LP
+      let subWalletTradingBudget: bigint;
+      if (volumeEth >= minTradingBudget) {
+        // Volume allocation is sufficient — redirect it from vault to sub-wallets
+        subWalletTradingBudget = volumeEth > MIN_VAULT_DEPOSIT ? volumeEth - MIN_VAULT_DEPOSIT : 0n;
+      } else {
+        // Volume is too small (e.g., volumePct=0) — carve from LP
+        const needed = minTradingBudget - volumeEth;
+        const carve = needed < liquidityEth ? needed : liquidityEth / 4n; // cap at 25% of LP
+        liquidityEth -= carve;
+        subWalletTradingBudget = volumeEth + carve;
+      }
+      // Minimal vault deposit for the contract
+      volumeEth = MIN_VAULT_DEPOSIT;
+
+      // Ensure LP still has a minimum for the vault deposit
       if (volumeEth < MIN_VAULT_DEPOSIT && liquidityEth > MIN_VAULT_DEPOSIT * 2n) {
-        const vaultCarve = liquidityEth / 20n; // 5% of LP ETH → vault
+        const vaultCarve = liquidityEth / 20n;
         liquidityEth -= vaultCarve;
         volumeEth += vaultCarve;
       }

@@ -69,6 +69,10 @@ export function mapApiEigenToEigen(api: ApiEigen, pnl?: ApiPnlSummary | null): E
     terminatedAt: status === 'terminated' || status === 'closed' ? new Date().toISOString() : null,
     updatedAt: new Date().toISOString(),
 
+    // LP / Pool info from keeper config
+    poolVersion: (config as any)?.pool_version || null,
+    lpPoolId: (config as any)?.lp_pool_id || null,
+
     // AI strategy
     customPrompt: config?.custom_prompt || null,
 

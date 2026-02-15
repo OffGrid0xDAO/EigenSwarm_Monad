@@ -62,8 +62,16 @@ export function getPackage(id: string): VolumePackage | undefined {
   return VOLUME_PACKAGES.find((p) => p.id === id);
 }
 
-// ── x402 Payment Requirements ─────────────────────────────────────────
+// ── x402 v2 Payment Requirements ──────────────────────────────────────
 
+const KEEPER_BASE_URL = process.env.KEEPER_BASE_URL || 'https://monad.eigenswarm.xyz';
+
+/**
+ * Payment requirements — includes both v2 SDK fields and v1 facilitator fields.
+ * - `amount` is read by the x402 client SDK (v2 PaymentRequirements type)
+ * - `maxAmountRequired` is read by the facilitator verify/settle endpoints
+ * - `resource`, `description`, `mimeType` are facilitator-required metadata
+ */
 export interface PaymentRequirements {
   scheme: 'exact';
   network: string;
@@ -78,6 +86,7 @@ export interface PaymentRequirements {
   extra: Record<string, unknown>;
 }
 
+/** v2 402 response body */
 export interface X402PaymentRequired {
   x402Version: 2;
   accepts: PaymentRequirements[];
@@ -87,18 +96,23 @@ export interface X402PaymentRequired {
 
 export function buildPaymentRequirements(pkg: VolumePackage, endpoint: string, network: 'monad' | 'base' = 'monad'): PaymentRequirements {
   const amountBaseUnits = (pkg.priceUSDC * 1_000_000).toString();
+  const resourceUrl = `${KEEPER_BASE_URL}${endpoint}`;
+  const description = `EigenSwarm ${pkg.id} package: ${pkg.ethVolume} ETH volume over ${pkg.duration}`;
   return {
     scheme: 'exact',
     network: network === 'monad' ? 'eip155:10143' : 'eip155:8453',
     amount: amountBaseUnits,
     maxAmountRequired: amountBaseUnits,
-    resource: endpoint,
-    description: `EigenSwarm ${pkg.id} package: ${pkg.ethVolume} ETH volume over ${pkg.duration}`,
+    resource: resourceUrl,
+    description,
     mimeType: 'application/json',
     payTo: X402_PAY_TO,
     maxTimeoutSeconds: 300,
     asset: network === 'monad' ? USDC_MONAD : USDC_BASE,
-    extra: {},
+    extra: {
+      name: 'USD Coin',
+      version: '2',
+    },
   };
 }
 
@@ -212,6 +226,9 @@ export async function verifyAndSettlePayment(
   }
 
   try {
+    // Decode the base64 payment signature header into a PaymentPayload object
+    const paymentPayload = JSON.parse(Buffer.from(xPaymentHeader, 'base64').toString('utf-8'));
+
     // Step 1: Verify
     console.log(`[x402] Calling facilitator verify: ${FACILITATOR_URL}/verify`);
     const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
@@ -221,18 +238,22 @@ export async function verifyAndSettlePayment(
         ...(authHeaders?.verify || {}),
       },
       body: JSON.stringify({
-        paymentHeader: xPaymentHeader,
+        x402Version: paymentPayload.x402Version,
+        paymentPayload,
         paymentRequirements,
       }),
       signal: AbortSignal.timeout(30_000),
     });
 
-    if (!verifyRes.ok) {
-      const errText = await verifyRes.text().catch(() => 'unknown');
-      return { valid: false, from: '', amount: 0, error: `Facilitator verify failed (${verifyRes.status}): ${errText}` };
+    // Parse response — facilitator may return 400 with a valid isValid:false response
+    const verifyBody = await verifyRes.text();
+    let verifyResult: VerifyResponse;
+    try {
+      verifyResult = JSON.parse(verifyBody);
+    } catch {
+      return { valid: false, from: '', amount: 0, error: `Facilitator verify failed (${verifyRes.status}): ${verifyBody}` };
     }
 
-    const verifyResult: VerifyResponse = await verifyRes.json();
     if (!verifyResult.isValid) {
       return {
         valid: false,
@@ -253,18 +274,20 @@ export async function verifyAndSettlePayment(
         ...(authHeaders?.settle || {}),
       },
       body: JSON.stringify({
-        paymentHeader: xPaymentHeader,
+        x402Version: paymentPayload.x402Version,
+        paymentPayload,
         paymentRequirements,
       }),
       signal: AbortSignal.timeout(60_000),
     });
 
-    if (!settleRes.ok) {
-      const errText = await settleRes.text().catch(() => 'unknown');
-      return { valid: false, from: verifyResult.payer || '', amount: 0, error: `Facilitator settle failed (${settleRes.status}): ${errText}` };
+    const settleBody = await settleRes.text();
+    let settleResult: SettleResponse;
+    try {
+      settleResult = JSON.parse(settleBody);
+    } catch {
+      return { valid: false, from: verifyResult.payer || '', amount: 0, error: `Facilitator settle failed (${settleRes.status}): ${settleBody}` };
     }
-
-    const settleResult: SettleResponse = await settleRes.json();
     if (!settleResult.success) {
       return {
         valid: false,

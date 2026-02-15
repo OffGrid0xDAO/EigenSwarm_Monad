@@ -82,6 +82,10 @@ export interface Eigen {
   agent8004ChainId?: number;   // Chain where 8004 NFT lives
   agentCardUri?: string;       // URI to agent registration file
 
+  // LP / Pool info (from keeper config, not from on-chain EigenLP contract)
+  poolVersion?: string | null;   // 'atomic' | 'v4' | null
+  lpPoolId?: string | null;      // V4 pool ID (bytes32 hex)
+
   // AI strategy
   customPrompt?: string | null;
 

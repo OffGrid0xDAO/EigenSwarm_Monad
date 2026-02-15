@@ -1113,7 +1113,10 @@ export default function EigenDetailPage() {
                 {/* ── UniswapV4 LP Performance ── */}
                 {(() => {
                   const zeroAddr = '0x0000000000000000000000000000000000000000';
-                  const hasLP = lpPosition.token && lpPosition.token !== zeroAddr;
+                  // LP position exists if either: on-chain EigenLP has it, or keeper config has a pool (atomic launch)
+                  const hasOnChainLP = lpPosition.token && lpPosition.token !== zeroAddr;
+                  const hasConfigLP = eigen.lpPoolId && eigen.lpPoolId !== zeroAddr && !/^0x0+$/.test(eigen.lpPoolId);
+                  const hasLP = hasOnChainLP || hasConfigLP;
                   const lpFeeYield = eigen.ethDeposited > 0 ? (eigen.lpFeesEarned / eigen.ethDeposited) * 100 : 0;
                   const unclaimedFees = eigen.lpFeesEarned - eigen.lpFeesClaimed;
                   const feesBarWidth = eigen.ethDeposited > 0 ? Math.min((eigen.lpFeesEarned / eigen.ethDeposited) * 100, 100) : 0;
@@ -1122,7 +1125,7 @@ export default function EigenDetailPage() {
                     <div className="relative rounded-xl border border-[#E8E6E0] overflow-hidden" style={{ background: 'linear-gradient(180deg, #FAFAF7 0%, #FFFFFF 100%)' }}>
                       {/* Header */}
                       <div className="flex items-center gap-2 px-3 py-2 border-b border-[#E8E6E0]/60">
-                        <img src="/logos/uniswap.svg" alt="Uniswap V4" width={70} height={70} className="flex-shrink-0 -my-2" />
+                        <img src="/logos/uniswap.svg" alt="V4 LP" width={70} height={70} className="flex-shrink-0 -my-2" />
                         <span className="text-[13px] font-medium text-txt-primary tracking-wide self-end -mb-[2px] -ml-2">V4 LP</span>
                         <div className="flex-1" />
                         {hasLP ? (
