@@ -9,7 +9,6 @@ const navLinks = [
   { href: '/app', label: 'Fleet' },
   { href: '/app/deploy', label: 'Deploy' },
   { href: '/app/launch', label: 'Launch' },
-  { href: '/app/bundle', label: 'Bundle' },
   { href: '/app/history', label: 'History' },
 ];
 

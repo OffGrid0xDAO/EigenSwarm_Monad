@@ -27,7 +27,7 @@ const SUPPORTED_CHAINS = [
 type LaunchPhase =
   | 'configure'
   | 'deploying_token'
-  | 'bundled_launch'
+  | 'atomic_launch'
   | 'minting_agent'
   | 'registering'
   | 'complete';
@@ -190,7 +190,7 @@ export default function LaunchPage() {
     }
 
     // Phase 2: Keeper does atomic launch (nad.fun + dev buy + V4 LP + vault)
-    setPhase('bundled_launch');
+    setPhase('atomic_launch');
 
     try {
       const result = await launchToken(monTxHash, {
@@ -312,7 +312,7 @@ export default function LaunchPage() {
     }
 
     // Phase 2: Keeper deploys token + seeds LP + creates vault + mints 8004 agent
-    setPhase('bundled_launch');
+    setPhase('atomic_launch');
 
     try {
       const result = await launchToken(ethTxHash, {
@@ -387,12 +387,12 @@ export default function LaunchPage() {
                   <PhaseStep
                     label="Send MON"
                     active={phase === 'deploying_token'}
-                    done={['bundled_launch', 'complete'].includes(phase)}
+                    done={['atomic_launch', 'complete'].includes(phase)}
                   />
                   <div className="h-px flex-1 bg-border-subtle" />
                   <PhaseStep
                     label="Atomic Launch"
-                    active={phase === 'bundled_launch'}
+                    active={phase === 'atomic_launch'}
                     done={phase === 'complete'}
                   />
                   <div className="h-px flex-1 bg-border-subtle" />
@@ -400,11 +400,11 @@ export default function LaunchPage() {
                 </>
               ) : (
                 <>
-                  <PhaseStep label="Send MON" active={phase === 'deploying_token'} done={['bundled_launch', 'complete'].includes(phase)} />
+                  <PhaseStep label="Send MON" active={phase === 'deploying_token'} done={['atomic_launch', 'complete'].includes(phase)} />
                   <div className="h-px flex-1 bg-border-subtle" />
                   <PhaseStep
                     label="Deploy + LP + Agent"
-                    active={phase === 'bundled_launch'}
+                    active={phase === 'atomic_launch'}
                     done={phase === 'complete'}
                   />
                 </>
@@ -833,7 +833,7 @@ export default function LaunchPage() {
         {launchTxHash && (
           <div className="subtle-card p-4">
             <p className="text-xs font-mono text-txt-muted">
-              Bundler tx: {launchTxHash}
+              Launch tx: {launchTxHash}
             </p>
           </div>
         )}
@@ -861,7 +861,7 @@ export default function LaunchPage() {
             ? 'Launched!'
             : phase === 'deploying_token'
               ? `Sending ${nativeToken}...`
-              : phase === 'bundled_launch'
+              : phase === 'atomic_launch'
                 ? 'Atomic Launch in Progress...'
                 : phase === 'registering'
                   ? 'Registering...'
