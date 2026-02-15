@@ -33,7 +33,7 @@ import {
 } from './db';
 import { isErc8004Enabled, registerAgent, buildAgentCard, resolveAgent8004Owner } from './erc8004';
 import { fetchAllEigens, fetchEigen, fetchRecentTrades, checkPonderHealth, type PonderEigen } from './ponder';
-import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey } from './x402';
+import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey, BAZAAR_EXTENSIONS } from './x402';
 import { getPositionSummary } from './pnl-tracker';
 import { executeTakeProfit } from './trader';
 import { getTokenBalance } from './sell-executor';
@@ -1329,6 +1329,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return json(res, getPricingResponse());
   }
 
+  // GET /api/x402 — x402 payment discovery endpoint (Bazaar-compatible)
+  // Always returns 402 with proper v2 payment requirements + bazaar extensions.
+  // Query params: ?package=<id> (default: starter), ?endpoint=<path> (default: /api/launch)
+  if (method === 'GET' && path === '/api/x402') {
+    const pkgId = url.searchParams.get('package') || 'starter';
+    const endpoint = url.searchParams.get('endpoint') || '/api/launch';
+    const pkg = getPackage(pkgId);
+    if (!pkg) {
+      return json(res, { error: `Unknown package: ${pkgId}. Available: micro, mini, starter, growth, pro, whale` }, 400);
+    }
+    const paymentRequired = build402Response(pkg, endpoint, 'monad', BAZAAR_EXTENSIONS);
+    res.writeHead(402, build402Headers(paymentRequired));
+    res.end(JSON.stringify(paymentRequired));
+    return;
+  }
+
   // GET /api/launch/info — deposit address for ETH direct launches
   if (method === 'GET' && path === '/api/launch/info') {
     return json(res, { depositAddress: getKeeperAddress() });
@@ -1574,7 +1590,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
       if (!xPayment || !paymentTxHash) {
         // No payment — respond 402 with x402-compliant payment requirements
-        const paymentRequired = build402Response(pkg, path);
+        const paymentRequired = build402Response(pkg, path, 'monad', BAZAAR_EXTENSIONS);
         res.writeHead(402, build402Headers(paymentRequired));
         res.end(JSON.stringify(paymentRequired));
         return;
@@ -1708,7 +1724,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         const pkgId = data.packageId || 'starter';
         const pkg = getPackage(pkgId);
         if (pkg) {
-          const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork);
+          const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork, BAZAAR_EXTENSIONS);
           res.writeHead(402, build402Headers(paymentRequired));
           res.end(JSON.stringify(paymentRequired));
           return;
@@ -3793,7 +3809,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
       if (!xPayment || !paymentTxHash) {
         // No payment — respond 402 with x402-compliant payment requirements
-        const paymentRequired = build402Response(pkg, path);
+        const paymentRequired = build402Response(pkg, path, 'monad', BAZAAR_EXTENSIONS);
         res.writeHead(402, build402Headers(paymentRequired));
         res.end(JSON.stringify(paymentRequired));
         return;

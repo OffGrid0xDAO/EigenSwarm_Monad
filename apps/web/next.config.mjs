@@ -65,13 +65,17 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    const keeperUrl = process.env.KEEPER_BACKEND_URL || 'http://localhost:3001';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${keeperUrl}/api/:path*`,
-      },
-    ];
+    // In local dev, proxy to local keeper; in production, vercel.json handles rewrites
+    if (process.env.NODE_ENV === 'development') {
+      const keeperUrl = process.env.KEEPER_BACKEND_URL || 'http://localhost:3001';
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${keeperUrl}/api/:path*`,
+        },
+      ];
+    }
+    return [];
   },
   webpack: (config) => {
     // Fix WalletConnect / MetaMask SDK / pino bundling issues
