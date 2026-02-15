@@ -1952,10 +1952,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       let liquidityEth = (deployableEth * BigInt(allocation.liquidityPct)) / 100n;
       let volumeEth = deployableEth - devBuyEth - liquidityEth; // remainder to avoid rounding loss
 
-      // Auto-carve vault deposit from LP portion if not explicitly set.
-      // The vault needs some ETH for initial buy orders; as the agent sells
-      // dev-bought tokens, ETH flows back into the vault via returnEth().
+      // Monad trader trades directly from sub-wallets, not from the on-chain vault.
+      // Redirect most of the volume budget to sub-wallet funding so they have
+      // actual MON for market-making trades. Keep minimal vault deposit for contract.
       const MIN_VAULT_DEPOSIT = 10000000000000n; // 0.00001 ETH minimum
+      const vaultVolumeEth = MIN_VAULT_DEPOSIT; // minimal deposit to satisfy contract
+      const subWalletTradingBudget = volumeEth > MIN_VAULT_DEPOSIT
+        ? volumeEth - MIN_VAULT_DEPOSIT
+        : 0n;
+      volumeEth = vaultVolumeEth;
+
+      // If LP allocation is big enough, carve a small vault deposit from it
       if (volumeEth < MIN_VAULT_DEPOSIT && liquidityEth > MIN_VAULT_DEPOSIT * 2n) {
         const vaultCarve = liquidityEth / 20n; // 5% of LP ETH → vault
         liquidityEth -= vaultCarve;
@@ -1964,7 +1971,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
       console.log(
         `[Launch] ETH split: devBuy=${formatEther(devBuyEth)}, ` +
-        `LP=${formatEther(liquidityEth)}, volume=${formatEther(volumeEth)}`,
+        `LP=${formatEther(liquidityEth)}, vault=${formatEther(volumeEth)}, ` +
+        `subWalletTrading=${formatEther(subWalletTradingBudget)}`,
       );
 
       // ── Step 3+4: Deploy Token ──────────────────────────────────────────
@@ -2096,6 +2104,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             lpPoolId = computedPoolId;
             console.log(`[Launch] Computed V4 pool ID: ${computedPoolId}`);
 
+            // Pre-compute total wallet funding (gas + redirected volume budget)
+            const totalWalletFunding = gasBudget + subWalletTradingBudget;
+
             // Insert eigen config with LP pool data
             insertEigenConfig({
               eigenId,
@@ -2114,7 +2125,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
               walletCount: requestedWalletCount,
               ownerAddress,
               chainId: 143,
-              gasBudgetEth: parseFloat(formatEther(gasBudget)),
+              gasBudgetEth: parseFloat(formatEther(totalWalletFunding)),
               protocolFeeEth: parseFloat(formatEther(protocolFee)),
               poolVersion: 'atomic',
               lpPoolId: computedPoolId,
@@ -2130,8 +2141,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             // ── Fund sub-wallets for market making ──────────────
             const wallets = getWalletsForEigen(eigenId, requestedWalletCount);
             const fundingTxs: string[] = [];
-            // Volume is now in the vault; fund wallets from gas budget for trade execution
-            const gasPerWallet = gasBudget / BigInt(wallets.length);
+            // Monad trader trades directly from sub-wallets (no vault).
+            // Fund each wallet with gas budget + redirected volume budget for real trades.
+            const gasPerWallet = totalWalletFunding / BigInt(wallets.length);
 
             if (gasPerWallet > 0n) {
               const keeperAddr = getKeeperAddress();
@@ -2190,7 +2202,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
                 totalEth: formatEther(totalEthReceived),
                 devBuyEth: formatEther(devBuyEth),
                 liquidityEth: formatEther(liquidityEth),
-                volumeEth: formatEther(volumeEth),
+                vaultEth: formatEther(volumeEth),
+                subWalletTradingBudget: formatEther(subWalletTradingBudget),
               },
               txHashes: {
                 swap: swapTxHash || null,
@@ -2201,6 +2214,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
                 protocolFee: formatEther(protocolFee),
                 protocolFeeBps: PROTOCOL_FEE_BPS,
                 gasBudget: formatEther(gasBudget),
+                tradingBudget: formatEther(subWalletTradingBudget),
+                totalWalletFunding: formatEther(totalWalletFunding),
                 walletCount: requestedWalletCount,
                 deployableEth: formatEther(deployableEth),
               },

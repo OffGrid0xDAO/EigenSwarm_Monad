@@ -13,7 +13,7 @@ export async function uploadImageToNadFun(
   const response = await fetch(`${NADFUN_API}/metadata/image`, {
     method: 'POST',
     headers: { 'Content-Type': contentType },
-    body: imageBuffer,
+    body: new Uint8Array(imageBuffer),
     signal: AbortSignal.timeout(30000),
   });
 
