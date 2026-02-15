@@ -4,6 +4,10 @@
 
 > Built for the [MOLTIVERSE Hackathon](https://moltiverse.dev/) | Agent+Token Track | Monad x nad.fun
 
+<p align="center">
+  <img src="docs/screenshot-landing.png" alt="EigenSwarm Landing Page" width="100%" />
+</p>
+
 ---
 
 ## The Problem
