@@ -2010,11 +2010,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             const tradingFeeBps = BigInt(Math.round(classConfig.protocolFee * 100));
 
             // ── Upload image + metadata to nad.fun API for proper visibility ──
+            // nad.fun requires ALL images go through their upload API for NSFW check
             let imageUri = '';
             if (data.image) {
-              // data.image can be a URL or base64
               if (data.image.startsWith('http')) {
-                imageUri = data.image;
+                // Fetch remote image → upload to nad.fun
+                const imgRes = await fetch(data.image, { signal: AbortSignal.timeout(15000) });
+                const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+                const contentType = imgRes.headers.get('content-type') || 'image/png';
+                const uploaded = await uploadImageToNadFun(imgBuffer, contentType);
+                imageUri = uploaded.imageUri;
               } else {
                 // base64 → buffer → upload to nad.fun
                 const base64Data = data.image.replace(/^data:image\/\w+;base64,/, '');
