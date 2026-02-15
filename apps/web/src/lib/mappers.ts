@@ -76,6 +76,9 @@ export function mapApiEigenToEigen(api: ApiEigen, pnl?: ApiPnlSummary | null): E
     // AI strategy
     customPrompt: config?.custom_prompt || null,
 
+    // Token image
+    tokenImageUrl: (config as any)?.token_image_url || null,
+
     // ERC-8004 identity
     agent8004Id: api.agent8004Id || config?.agent_8004_id || undefined,
     agent8004ChainId: api.agent8004ChainId || config?.agent_8004_chain_id || undefined,

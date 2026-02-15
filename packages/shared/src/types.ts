@@ -89,6 +89,9 @@ export interface Eigen {
   // AI strategy
   customPrompt?: string | null;
 
+  // Token image (from nad.fun CDN)
+  tokenImageUrl?: string | null;
+
   // Market data (optional — populated when available)
   marketCap?: number;
 

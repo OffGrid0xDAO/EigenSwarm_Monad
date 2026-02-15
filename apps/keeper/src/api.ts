@@ -672,7 +672,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
           : config.status || ponderStatus || 'active';
         // Eigens not tracked by Ponder (V1 vault) with no active balance → closed
         // But skip brand-new eigens (< 30 min old) that Ponder hasn't indexed yet
-        if (!ponder && resolvedStatus !== 'closed' && resolvedStatus !== 'terminated') {
+        // NOTE: Monad eigens (chain_id=143) are NEVER in Ponder — Ponder only indexes Base.
+        // Only apply this stale-close logic to Base eigens.
+        if (!ponder && resolvedStatus !== 'closed' && resolvedStatus !== 'terminated' && config.chain_id !== 143) {
           const createdAt = config.created_at ? new Date(config.created_at + 'Z').getTime() : 0;
           const ageMs = Date.now() - createdAt;
           if (ageMs > 30 * 60 * 1000) {
@@ -2149,6 +2151,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
               lpPoolId: computedPoolId,
               lpPoolFee: ATOMIC_LP_FEE,
               lpPoolTickSpacing: ATOMIC_LP_TICK_SPACING,
+              tokenImageUrl: imageUri || null,
             });
             insertProtocolFee(eigenId, formatEther(protocolFee), 'launch');
 

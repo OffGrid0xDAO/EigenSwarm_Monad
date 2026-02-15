@@ -139,46 +139,77 @@ export function build402Response(
 // Produces the correct BodyDiscoveryExtension format for x402 Bazaar compatibility.
 
 export const BAZAAR_EXTENSIONS: Record<string, unknown> = {
-  discoveryExtension: {
-    bodyType: 'json',
-    input: {
-      name: 'MyToken',
-      symbol: 'MTK',
-      packageId: 'starter',
-      class: 'operator',
-      walletCount: 10,
-      description: 'Autonomous market-making agent',
-    },
-    inputSchema: {
-      properties: {
-        name: { type: 'string', description: 'Token name' },
-        symbol: { type: 'string', description: 'Token ticker symbol (2-10 chars)' },
-        packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package' },
-        class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class (determines wallet count range)' },
-        walletCount: { type: 'number', description: 'Number of sub-wallets for market making' },
-        description: { type: 'string', description: 'Agent description' },
-        imageUrl: { type: 'string', description: 'Token logo URL' },
-        chainId: { type: 'number', description: 'Target chain (8453=Base, 10143=Monad)' },
-      },
-      required: ['name', 'symbol', 'packageId'],
-    },
-    output: {
-      example: {
-        status: 'success',
-        eigenId: '0x...',
-        tokenAddress: '0x...',
-        poolAddress: '0x...',
-        agent8004Id: '...',
-      },
-      schema: {
-        properties: {
-          status: { type: 'string' },
-          eigenId: { type: 'string' },
-          tokenAddress: { type: 'string' },
-          poolAddress: { type: 'string' },
-          agent8004Id: { type: 'string' },
+  bazaar: {
+    info: {
+      input: {
+        type: 'http',
+        bodyType: 'json',
+        body: {
+          name: 'MyToken',
+          symbol: 'MTK',
+          packageId: 'starter',
+          class: 'operator',
+          walletCount: 10,
+          description: 'Autonomous market-making agent',
         },
       },
+      output: {
+        type: 'json',
+        example: {
+          status: 'success',
+          eigenId: '0x...',
+          tokenAddress: '0x...',
+          poolAddress: '0x...',
+          agent8004Id: '...',
+        },
+      },
+    },
+    schema: {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        input: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', const: 'http' },
+            method: { type: 'string', enum: ['POST', 'PUT', 'PATCH'] },
+            bodyType: { type: 'string', enum: ['json', 'form-data', 'text'] },
+            body: {
+              properties: {
+                name: { type: 'string', description: 'Token name' },
+                symbol: { type: 'string', description: 'Token ticker symbol (2-10 chars)' },
+                packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package' },
+                class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class (determines wallet count range)' },
+                walletCount: { type: 'number', description: 'Number of sub-wallets for market making' },
+                description: { type: 'string', description: 'Agent description' },
+                imageUrl: { type: 'string', description: 'Token logo URL' },
+                chainId: { type: 'number', description: 'Target chain (8453=Base, 10143=Monad)' },
+              },
+              required: ['name', 'symbol', 'packageId'],
+            },
+          },
+          required: ['type', 'bodyType', 'body'],
+          additionalProperties: false,
+        },
+        output: {
+          type: 'object',
+          properties: {
+            type: { type: 'string' },
+            example: {
+              type: 'object',
+              properties: {
+                status: { type: 'string' },
+                eigenId: { type: 'string' },
+                tokenAddress: { type: 'string' },
+                poolAddress: { type: 'string' },
+                agent8004Id: { type: 'string' },
+              },
+            },
+          },
+          required: ['type'],
+        },
+      },
+      required: ['input'],
     },
   },
 };

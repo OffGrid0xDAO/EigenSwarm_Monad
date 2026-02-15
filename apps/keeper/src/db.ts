@@ -149,6 +149,7 @@ function migrateSchema() {
     ['protocol_fee_eth', 'REAL NOT NULL DEFAULT 0'],
     ['custom_prompt', 'TEXT DEFAULT NULL'],
     ['wallet_source', "TEXT NOT NULL DEFAULT 'derived'"],  // 'derived' | 'imported'
+    ['token_image_url', 'TEXT DEFAULT NULL'],               // nad.fun image CDN URL
   ];
 
   for (const [name, definition] of newColumns) {
@@ -317,6 +318,7 @@ export function insertEigenConfig(data: {
   chainId?: number;
   gasBudgetEth?: number;
   protocolFeeEth?: number;
+  tokenImageUrl?: string | null;
 }) {
   const db = getDb();
   const stmt = db.prepare(`
@@ -326,14 +328,14 @@ export function insertEigenConfig(data: {
       spread_width, profit_target, stop_loss, rebalance_threshold, wallet_count,
       pool_version, pool_fee, pool_tick_spacing, pool_hooks, pool_address, owner_address,
       lp_pool_id, lp_token_id, lp_pool_fee, lp_pool_tick_spacing, lp_contract_address,
-      chain_id, vault_version, gas_budget_eth, protocol_fee_eth
+      chain_id, vault_version, gas_budget_eth, protocol_fee_eth, token_image_url
     ) VALUES (
       @eigenId, @tokenAddress, @tokenSymbol, @tokenName,
       @class, @volumeTarget, @tradeFrequency, @orderSizeMin, @orderSizeMax,
       @spreadWidth, @profitTarget, @stopLoss, @rebalanceThreshold, @walletCount,
       @poolVersion, @poolFee, @poolTickSpacing, @poolHooks, @poolAddress, @ownerAddress,
       @lpPoolId, @lpTokenId, @lpPoolFee, @lpPoolTickSpacing, @lpContractAddress,
-      @chainId, @vaultVersion, @gasBudgetEth, @protocolFeeEth
+      @chainId, @vaultVersion, @gasBudgetEth, @protocolFeeEth, @tokenImageUrl
     )
   `);
   stmt.run({
@@ -366,6 +368,7 @@ export function insertEigenConfig(data: {
     vaultVersion: 'v2',
     gasBudgetEth: data.gasBudgetEth ?? 0,
     protocolFeeEth: data.protocolFeeEth ?? 0,
+    tokenImageUrl: data.tokenImageUrl ?? null,
   });
 }
 

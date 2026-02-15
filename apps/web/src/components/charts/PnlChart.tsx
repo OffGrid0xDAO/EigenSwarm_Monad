@@ -108,7 +108,7 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
             }}
             labelStyle={{ color: '#706F84' }}
             formatter={(value: number, name: string) => [
-              `${value.toFixed(4)} ETH`,
+              `${value.toFixed(4)} MON`,
               name === 'volume' ? 'Volume' : 'Withdrawable',
             ]}
           />
@@ -123,12 +123,14 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
             dataKey="volume"
             fill="url(#volumeGradient)"
             stroke="none"
+            legendType="none"
           />
           <Area
             type="monotone"
             dataKey="withdrawable"
             fill="url(#withdrawGradient)"
             stroke="none"
+            legendType="none"
           />
           <Line
             type="monotone"
@@ -141,7 +143,7 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
           <Line
             type="monotone"
             dataKey="withdrawable"
-            name="Withdrawable ETH"
+            name="Withdrawable MON"
             stroke="#4A9D7E"
             strokeWidth={2}
             dot={false}

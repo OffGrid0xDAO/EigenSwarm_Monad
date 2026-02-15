@@ -619,7 +619,14 @@ export default function EigenDetailPage() {
               {/* Token logo — DexScreener with gradient fallback */}
               <div className="relative flex-shrink-0">
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 border-[#E8E6E0] shadow-sm">
-                  {eigen.tokenAddress ? (
+                  {eigen.tokenImageUrl ? (
+                    <img
+                      src={eigen.tokenImageUrl}
+                      alt={eigen.tokenSymbol}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+                    />
+                  ) : eigen.tokenAddress ? (
                     <img
                       src={`https://dd.dexscreener.com/ds-data/tokens/${eigen.chainId === 143 ? 'monad' : 'base'}/${eigen.tokenAddress}.png`}
                       alt={eigen.tokenSymbol}
@@ -627,7 +634,7 @@ export default function EigenDetailPage() {
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
                     />
                   ) : null}
-                  <div className={`w-full h-full flex items-center justify-center font-display text-lg text-white ${eigen.tokenAddress ? 'hidden' : ''}`}
+                  <div className={`w-full h-full flex items-center justify-center font-display text-lg text-white ${eigen.tokenImageUrl || eigen.tokenAddress ? 'hidden' : ''}`}
                     style={{ background: `linear-gradient(135deg, #7B3FE4 0%, #1A1A2E 100%)` }}>
                     {eigen.tokenSymbol?.charAt(0) || '?'}
                   </div>
@@ -842,24 +849,41 @@ export default function EigenDetailPage() {
                       : <span className="text-white/30">&mdash;</span>;
                   })()}
                 </p>
-                <a
-                  href={`https://dexscreener.com/${eigen.chainId === 143 ? 'monad' : 'base'}/${eigen.poolAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[10px] text-white/35 hover:text-[#A78BFA] transition-colors mt-1.5 border border-white/10 rounded-full px-2.5 py-0.5"
-                >
-                  DexScreener
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                    <polyline points="15 3 21 3 21 9" />
-                    <line x1="10" y1="14" x2="21" y2="3" />
-                  </svg>
-                </a>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <a
+                    href={`https://dexscreener.com/${eigen.chainId === 143 ? 'monad' : 'base'}/${eigen.poolAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[10px] text-white/35 hover:text-[#A78BFA] transition-colors border border-white/10 rounded-full px-2.5 py-0.5"
+                  >
+                    DexScreener
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </a>
+                  {eigen.chainId === 143 && eigen.tokenAddress && (
+                    <a
+                      href={`https://nad.fun/token/${eigen.tokenAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[10px] text-white/35 hover:text-[#A78BFA] transition-colors border border-white/10 rounded-full px-2.5 py-0.5"
+                    >
+                      nad.fun
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-[10px] uppercase tracking-[0.14em] text-white/45 font-medium mb-0.5">Pool Pair</p>
                 <p className="font-display text-lg md:text-xl text-white/90 tracking-tight leading-none whitespace-nowrap">
-                  ${eigen.tokenSymbol}<span className="text-white/35 text-[0.55em] ml-0.5">/ETH</span>
+                  ${eigen.tokenSymbol}<span className="text-white/35 text-[0.55em] ml-0.5">/{eigen.chainId === 143 ? 'MON' : 'ETH'}</span>
                 </p>
                 <div className="flex justify-end gap-1 mt-1.5">
                   {['1h', '4h', '1d', '7d', '30d'].map((range) => (

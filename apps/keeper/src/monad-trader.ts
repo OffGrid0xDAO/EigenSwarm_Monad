@@ -632,6 +632,14 @@ async function processMonadEigen(config: EigenConfig, aiConfig: AIConfig): Promi
   if (deployState.deploying && eigen.ethBalance > 0.001) {
     console.log(`[MonadTrader] ${eigen.eigenId}: DEPLOYMENT — ${deployState.emptyWalletIndices.length} empty wallets`);
     await executeMonadDeploymentBurst(eigen, wallets, deployState.emptyWalletIndices, v4Pool);
+
+    // Recalculate ethBalance after burst so market making sees the real balances
+    let refreshedMon = 0n;
+    for (const w of wallets) {
+      try { refreshedMon += await client.getBalance({ address: w.address }); } catch {}
+    }
+    eigen.ethBalance = parseFloat(formatEther(refreshedMon));
+    console.log(`[MonadTrader] ${eigen.eigenId}: post-burst balance=${eigen.ethBalance.toFixed(6)} MON`);
   }
 
   // Get trade decision

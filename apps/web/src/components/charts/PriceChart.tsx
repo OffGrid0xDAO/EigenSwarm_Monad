@@ -12,6 +12,19 @@ interface PriceChartProps {
   theme?: 'dark' | 'light';
 }
 
+/** Format price for chart Y-axis labels — compact, readable, handles extreme ranges. */
+function formatChartPrice(price: number): string {
+  if (price === 0) return '0';
+  const abs = Math.abs(price);
+  if (abs >= 1e9) return (price / 1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return (price / 1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return (price / 1e3).toFixed(1) + 'K';
+  if (abs >= 1) return price.toFixed(4);
+  if (abs >= 0.0001) return price.toFixed(6);
+  if (abs >= 0.00000001) return price.toFixed(10);
+  return price.toExponential(2);
+}
+
 /** Sort by time and deduplicate — lightweight-charts requires strictly ascending timestamps. */
 function dedupeChartData(data: ApiPriceSnapshot[]) {
   const sorted = data
@@ -114,9 +127,9 @@ export function PriceChart({ ohlcvData, lineData, symbol, className, theme = 'da
           crosshairMarkerBorderColor: '#7B3FE4',
           crosshairMarkerBackgroundColor: '#fff',
           priceFormat: {
-            type: 'price',
-            precision: 10,
-            minMove: 0.0000000001,
+            type: 'custom',
+            formatter: formatChartPrice,
+            minMove: 0.0000000000000000001,
           },
         });
         seriesRef.current = series;
