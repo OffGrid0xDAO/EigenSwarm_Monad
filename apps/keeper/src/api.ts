@@ -1707,9 +1707,31 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (method === 'POST' && path === '/api/launch') {
     try {
       const body = await readBody(req);
-      const data = JSON.parse(body);
+      const data = JSON.parse(body || '{}');
 
-      // Validate required fields
+      // ── x402 USDC Payment (check FIRST — Bazaar crawlers hit this with no body) ──
+      const xPayment = getPaymentHeader(req.headers);
+      const ethPaymentTxHash = req.headers['x-eth-payment'] as string | undefined;
+      const paymentTxHash = ethPaymentTxHash || (xPayment ? derivePaymentKey(xPayment) : undefined);
+
+      if (!paymentTxHash || (!xPayment && !ethPaymentTxHash)) {
+        // No payment — return 402 with x402 payment requirements
+        const paymentChainId = typeof data.paymentChainId === 'number' && isChainSupported(data.paymentChainId)
+          ? data.paymentChainId
+          : 143;
+        const paymentNetwork: 'monad' | 'base' = paymentChainId === 8453 ? 'base' : 'monad';
+        const pkgId = data.packageId || 'starter';
+        const pkg = getPackage(pkgId);
+        if (pkg) {
+          const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork);
+          res.writeHead(402, build402Headers(paymentRequired));
+          res.end(JSON.stringify(paymentRequired));
+          return;
+        }
+        return json(res, { error: 'Payment required. Send X-PAYMENT or PAYMENT-SIGNATURE header with x402 signed payload.' }, 402);
+      }
+
+      // Validate required fields (only after payment is present)
       if (!data.name || !data.symbol) {
         return json(res, { error: 'name and symbol required' }, 400);
       }
@@ -1744,29 +1766,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         return json(res, { error: `allocation percentages must sum to 100, got ${totalPct}` }, 400);
       }
 
-      // ── Determine payment chain & method ─────────────────────────────
+      // ── Determine payment chain ────────────────────────────────────
       const paymentChainId = typeof data.paymentChainId === 'number' && isChainSupported(data.paymentChainId)
         ? data.paymentChainId
         : 143;
       const paymentNetwork: 'monad' | 'base' = paymentChainId === 8453 ? 'base' : 'monad';
-
-      const ethPaymentTxHash = req.headers['x-eth-payment'] as string | undefined;
-      const xPayment = getPaymentHeader(req.headers);
-      // For ETH: dedup key = tx hash. For x402 USDC: dedup key = sha256 of signed payload.
-      const paymentTxHash = ethPaymentTxHash || (xPayment ? derivePaymentKey(xPayment) : undefined);
-
-      if (!paymentTxHash) {
-        // No payment — return 402 with x402-compliant payment requirements
-        const pkgId = data.packageId || 'starter';
-        const pkg = getPackage(pkgId);
-        if (pkg) {
-          const paymentRequired = build402Response(pkg, '/api/launch', paymentNetwork);
-          res.writeHead(402, build402Headers(paymentRequired));
-          res.end(JSON.stringify(paymentRequired));
-          return;
-        }
-        return json(res, { error: 'Payment required. Send X-PAYMENT or PAYMENT-SIGNATURE header with x402 signed payload.' }, 402);
-      }
 
       // Payment replay check
       if (isPaymentUsed(paymentTxHash)) {
