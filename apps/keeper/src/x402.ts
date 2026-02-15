@@ -214,6 +214,81 @@ export const BAZAAR_EXTENSIONS: Record<string, unknown> = {
   },
 };
 
+export const MARKET_MAKING_EXTENSIONS: Record<string, unknown> = {
+  bazaar: {
+    info: {
+      input: {
+        type: 'http',
+        bodyType: 'json',
+        body: {
+          tokenAddress: '0x...',
+          packageId: 'starter',
+          class: 'operator',
+          walletCount: 5,
+        },
+      },
+      output: {
+        type: 'json',
+        example: {
+          success: true,
+          eigenId: '0x...',
+          tokenAddress: '0x...',
+          walletsCreated: 5,
+          walletsFunded: 5,
+          monPerWallet: '0.2',
+          status: 'active',
+        },
+      },
+    },
+    schema: {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        input: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', const: 'http' },
+            method: { type: 'string', enum: ['POST', 'PUT', 'PATCH'] },
+            bodyType: { type: 'string', enum: ['json', 'form-data', 'text'] },
+            body: {
+              properties: {
+                tokenAddress: { type: 'string', description: 'Token contract address to market-make' },
+                packageId: { type: 'string', enum: ['micro', 'mini', 'starter', 'growth', 'pro', 'whale'], description: 'Volume package — determines ETH volume and USDC price' },
+                class: { type: 'string', enum: ['sentinel', 'operator', 'architect', 'sovereign'], description: 'Agent class — determines number of sub-wallets' },
+                walletCount: { type: 'number', description: 'Number of sub-wallets for trading (must be within class range)' },
+                chainId: { type: 'number', description: 'Chain ID (10143=Monad)' },
+              },
+              required: ['tokenAddress', 'packageId'],
+            },
+          },
+          required: ['type', 'bodyType', 'body'],
+          additionalProperties: false,
+        },
+        output: {
+          type: 'object',
+          properties: {
+            type: { type: 'string' },
+            example: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                eigenId: { type: 'string' },
+                tokenAddress: { type: 'string' },
+                walletsCreated: { type: 'number' },
+                walletsFunded: { type: 'number' },
+                monPerWallet: { type: 'string' },
+                status: { type: 'string' },
+              },
+            },
+          },
+          required: ['type'],
+        },
+      },
+      required: ['input'],
+    },
+  },
+};
+
 // ── x402 Response Headers ────────────────────────────────────────────
 
 /**

@@ -33,7 +33,7 @@ import {
 } from './db';
 import { isErc8004Enabled, registerAgent, buildAgentCard, resolveAgent8004Owner } from './erc8004';
 import { fetchAllEigens, fetchEigen, fetchRecentTrades, checkPonderHealth, type PonderEigen } from './ponder';
-import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey, BAZAAR_EXTENSIONS } from './x402';
+import { getPricingResponse, getPackage, buildPaymentRequirements, build402Response, build402Headers, getPaymentHeader, verifyAndSettlePayment, derivePaymentKey, BAZAAR_EXTENSIONS, MARKET_MAKING_EXTENSIONS } from './x402';
 import { getPositionSummary } from './pnl-tracker';
 import { executeTakeProfit } from './trader';
 import { getTokenBalance } from './sell-executor';
@@ -1703,6 +1703,20 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
+  // GET /api/launch — x402 discovery: returns 402 with payment requirements + bazaar extensions
+  // Used by x402scan and Bazaar crawlers to discover this resource.
+  if (method === 'GET' && path === '/api/launch') {
+    const pkgId = url.searchParams.get('package') || 'starter';
+    const pkg = getPackage(pkgId);
+    if (!pkg) {
+      return json(res, { error: `Unknown package: ${pkgId}. Available: micro, mini, starter, growth, pro, whale` }, 400);
+    }
+    const paymentRequired = build402Response(pkg, '/api/launch', 'monad', BAZAAR_EXTENSIONS);
+    res.writeHead(402, build402Headers(paymentRequired));
+    res.end(JSON.stringify(paymentRequired));
+    return;
+  }
+
   // POST /api/launch — Full token launch: deploy Clanker + dev buy + LP + eigen + 8004 agent
   // Accepts either:
   //   - X-ETH-PAYMENT header: user sent ETH directly to keeper (frontend flow)
@@ -2689,6 +2703,148 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         if (txHash) deletePayment(txHash);
       } catch { /* safe */ }
       return json(res, { error: 'Launch failed' }, 500);
+    }
+  }
+
+  // GET /api/market-making — x402 discovery: callable market-making resource
+  // Returns 402 with payment requirements + bazaar extensions for x402scan.
+  if (method === 'GET' && path === '/api/market-making') {
+    const pkgId = url.searchParams.get('package') || 'starter';
+    const pkg = getPackage(pkgId);
+    if (!pkg) {
+      return json(res, { error: `Unknown package: ${pkgId}. Available: micro, mini, starter, growth, pro, whale` }, 400);
+    }
+    const paymentRequired = build402Response(pkg, '/api/market-making', 'monad', MARKET_MAKING_EXTENSIONS);
+    res.writeHead(402, build402Headers(paymentRequired));
+    res.end(JSON.stringify(paymentRequired));
+    return;
+  }
+
+  // POST /api/market-making — Start market-making on an existing token via x402 payment
+  // Pay USDC via x402, provide a token address, and the keeper spins up sub-wallets + starts trading.
+  if (method === 'POST' && path === '/api/market-making') {
+    try {
+      const body = await readBody(req);
+      const data = JSON.parse(body || '{}');
+
+      // x402 payment check
+      const xPayment = getPaymentHeader(req.headers);
+      const paymentTxHash = xPayment ? derivePaymentKey(xPayment) : undefined;
+
+      const pkgId = data.packageId || 'starter';
+      const pkg = getPackage(pkgId);
+
+      if (!xPayment || !paymentTxHash) {
+        if (pkg) {
+          const paymentRequired = build402Response(pkg, '/api/market-making', 'monad', MARKET_MAKING_EXTENSIONS);
+          res.writeHead(402, build402Headers(paymentRequired));
+          res.end(JSON.stringify(paymentRequired));
+          return;
+        }
+        return json(res, { error: 'Payment required. Send PAYMENT-SIGNATURE header with x402 signed payload.' }, 402);
+      }
+
+      if (!pkg) {
+        return json(res, { error: `Unknown package: ${pkgId}. Use GET /api/pricing to see available packages.` }, 400);
+      }
+
+      // Validate required fields
+      if (!data.tokenAddress) {
+        return json(res, { error: 'tokenAddress is required' }, 400);
+      }
+
+      // Check for duplicate payment
+      const existingPayment = getPayment(paymentTxHash);
+      if (existingPayment) {
+        return json(res, { error: 'Payment already used' }, 409);
+      }
+
+      // Verify and settle payment via x402 facilitator
+      const requirements = buildPaymentRequirements(pkg, '/api/market-making');
+      console.log(`[Market-Making] Verifying payment via facilitator for ${pkg.priceUSDC} USDC`);
+      const verification = await verifyAndSettlePayment(xPayment, requirements);
+
+      if (!verification.valid) {
+        return json(res, { error: `Payment verification failed: ${verification.error}` }, 402);
+      }
+
+      // Record payment
+      recordPayment(paymentTxHash, verification.from, verification.amount, verification.settleTxHash || null);
+      console.log(`[Market-Making] Payment verified — payer: ${verification.from}, amount: ${verification.amount} USDC`);
+
+      // Derive eigen config for market-making
+      const tokenAddress = data.tokenAddress.toLowerCase();
+      const chainId = data.chainId || 143;
+      const eigenClass = data.class || 'operator';
+      const requestedWalletCount = data.walletCount || 5;
+      const eigenId = tokenAddress; // Use token address as eigen ID
+
+      // Check if eigen already exists
+      const existing = getEigenConfig(eigenId);
+      if (existing) {
+        return json(res, {
+          error: 'Market-making already active for this token',
+          eigenId,
+          status: existing.status,
+        }, 409);
+      }
+
+      // Insert eigen config for market-making
+      insertEigenConfig({
+        eigen_id: eigenId,
+        token_address: tokenAddress,
+        token_symbol: data.symbol || 'UNKNOWN',
+        chain_id: chainId,
+        class: eigenClass,
+        wallet_count: requestedWalletCount,
+        status: 'active',
+        owner_address: verification.from,
+        volume_budget_eth: pkg.ethVolume.toString(),
+        payment_tx_hash: paymentTxHash,
+        payment_amount_usdc: verification.amount,
+      });
+
+      // Fund sub-wallets
+      const wallets = getWalletsForEigen(eigenId, requestedWalletCount);
+      let walletsFunded = 0;
+      const monPerWallet = pkg.ethVolume / wallets.length;
+
+      if (monPerWallet > 0) {
+        const masterWallet = getWalletClient(143);
+        const monadClient = getPublicClient(143);
+        const { parseEther } = await import('viem');
+        const monPerWalletWei = parseEther(monPerWallet.toString());
+
+        for (const wallet of wallets) {
+          try {
+            const txHash = await masterWallet.sendTransaction({
+              to: wallet.address as `0x${string}`,
+              value: monPerWalletWei,
+            });
+            await monadClient.waitForTransactionReceipt({ hash: txHash });
+            walletsFunded++;
+          } catch (err) {
+            console.error(`[Market-Making] Failed to fund wallet ${wallet.address}:`, (err as Error).message);
+          }
+        }
+        console.log(`[Market-Making] Funded ${walletsFunded}/${wallets.length} wallets with ${monPerWallet} MON each`);
+      }
+
+      return json(res, {
+        success: true,
+        eigenId,
+        tokenAddress,
+        walletsCreated: wallets.length,
+        walletsFunded,
+        monPerWallet: monPerWallet.toFixed(6),
+        status: 'active',
+        package: pkg.id,
+        volumeEth: pkg.ethVolume,
+        payer: verification.from,
+      }, 201);
+    } catch (error) {
+      console.error('[Market-Making] Error:', (error as Error).message);
+      return json(res, { error: 'Market-making setup failed: ' + (error as Error).message }, 500);
     }
   }
 
