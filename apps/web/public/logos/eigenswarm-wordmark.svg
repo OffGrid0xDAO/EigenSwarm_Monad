@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 72" fill="none">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&amp;display=swap');
+    </style>
+  </defs>
+  <text x="0" y="55"
+        font-family="'Playfair Display', Georgia, serif"
+        font-weight="900"
+        font-size="56"
+        fill="#FFFFFF"
+        letter-spacing="-1">EigenSwarm</text>
+</svg>

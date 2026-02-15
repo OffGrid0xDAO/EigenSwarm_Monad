@@ -1,0 +1,18 @@
+{
+  "name": "EigenSwarm — Autonomous Market Making Agents",
+  "short_name": "EigenSwarm",
+  "description": "Deploy autonomous AI agents that generate volume, manage spreads, and capture 100% of LP fees on nad.fun tokens.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#131517",
+  "theme_color": "#7B3FE4",
+  "icons": [
+    {
+      "src": "/logos/eigenswarm-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"]
+}

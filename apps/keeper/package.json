@@ -1,0 +1,25 @@
+{
+  "name": "@eigenswarm/keeper",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@coinbase/x402": "^2.1.0",
+    "@eigenswarm/shared": "workspace:*",
+    "@nadfun/sdk": "^0.4.3",
+    "better-sqlite3": "^11.0.0",
+    "clanker-sdk": "^4.2.10",
+    "dotenv": "^16.4.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

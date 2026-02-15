@@ -1,0 +1,21 @@
+{
+  "name": "@eigenswarm/indexer",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "ponder dev",
+    "start": "ponder start",
+    "codegen": "ponder codegen"
+  },
+  "dependencies": {
+    "@eigenswarm/shared": "workspace:*",
+    "ponder": "^0.15.2",
+    "hono": "^4.5.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 440" fill="none">
+  <g fill="#5B21B6">
+    <!-- Row 1: ■ ■ · ■ ■ -->
+    <rect x="0"   y="0"   width="80" height="80" rx="3"/>
+    <rect x="90"  y="0"   width="80" height="80" rx="3"/>
+    <rect x="270" y="0"   width="80" height="80" rx="3"/>
+    <rect x="360" y="0"   width="80" height="80" rx="3"/>
+    <!-- Row 2: ■ ■ ■ ■ · -->
+    <rect x="0"   y="90"  width="80" height="80" rx="3"/>
+    <rect x="90"  y="90"  width="80" height="80" rx="3"/>
+    <rect x="180" y="90"  width="80" height="80" rx="3"/>
+    <rect x="270" y="90"  width="80" height="80" rx="3"/>
+    <!-- Row 3: ■ ■ ■ · ■ -->
+    <rect x="0"   y="180" width="80" height="80" rx="3"/>
+    <rect x="90"  y="180" width="80" height="80" rx="3"/>
+    <rect x="180" y="180" width="80" height="80" rx="3"/>
+    <rect x="360" y="180" width="80" height="80" rx="3"/>
+    <!-- Row 4: · ■ ■ ■ ■ -->
+    <rect x="90"  y="270" width="80" height="80" rx="3"/>
+    <rect x="180" y="270" width="80" height="80" rx="3"/>
+    <rect x="270" y="270" width="80" height="80" rx="3"/>
+    <rect x="360" y="270" width="80" height="80" rx="3"/>
+    <!-- Row 5: ■ · ■ ■ · -->
+    <rect x="0"   y="360" width="80" height="80" rx="3"/>
+    <rect x="180" y="360" width="80" height="80" rx="3"/>
+    <rect x="270" y="360" width="80" height="80" rx="3"/>
+  </g>
+</svg>

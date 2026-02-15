@@ -1,0 +1,21 @@
+{
+  "name": "@eigenswarm/sdk",
+  "version": "0.1.0",
+  "description": "SDK for AI agents to interact with EigenSwarm — deploy market-making eigens, monitor positions, manage trades",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@eigenswarm/shared": "workspace:*",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": ["eigenswarm", "agents", "market-making", "sdk", "ai"],
+  "license": "MIT"
+}

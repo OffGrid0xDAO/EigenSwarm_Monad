@@ -1,0 +1,12 @@
+node_modules
+.turbo
+dist
+*.db
+*.db-journal
+.env
+.env.local
+apps/keeper/eigenswarm.db
+contracts/out
+contracts/cache
+contracts/lib
+Bundle/node_modules

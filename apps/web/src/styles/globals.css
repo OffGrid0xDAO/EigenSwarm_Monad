@@ -1,0 +1,1048 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: thin;
+  scrollbar-color: #D4D2CC transparent;
+}
+
+body {
+  background: #F5F3EE;
+  color: #1A1A2E;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+}
+
+::selection { background: rgba(123, 63, 228, 0.15); }
+:focus-visible { outline: 1.5px solid #7B3FE4; outline-offset: 2px; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D4D2CC; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #B8B7C8; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORGANIC SECTION SYSTEM — yield.xyz-inspired non-rectangular shapes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Organic white hero — big floating rounded blob on dark page */
+.organic-hero {
+  background: #FFFFFF;
+  border-radius: 40px;
+  position: relative;
+  z-index: 2;
+  color: #1A1A2E;
+}
+@media (min-width: 768px) {
+  .organic-hero { border-radius: 50px; }
+}
+
+/* Organic white island — rounded all corners, inset from edges */
+.organic-island {
+  background: #FFFFFF;
+  border-radius: 36px;
+  position: relative;
+  z-index: 2;
+  color: #1A1A2E;
+}
+@media (min-width: 768px) {
+  .organic-island { border-radius: 44px; }
+}
+
+/* Organic footer — rounded top only */
+.organic-footer {
+  background: #FFFFFF;
+  border-radius: 40px 40px 0 0;
+  position: relative;
+  z-index: 2;
+  color: #1A1A2E;
+}
+
+/* ─── Pill Nav ──────────────────────────────────────────────────────────── */
+
+.pill-nav-container {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(30, 32, 35, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 100px;
+  padding: 5px 6px;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pill-nav-link {
+  padding: 7px 18px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.pill-nav-link:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pill-nav-link.active {
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Nav CTA pill — white bg, dark text, gradient icon */
+.nav-cta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  color: #1A1A2E;
+  border-radius: 10px;
+  padding: 8px 10px 8px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+}
+.nav-cta-pill:hover {
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+/* ─── Organic Nav Links (on white curved surface) ────────────────── */
+
+.organic-nav-link {
+  padding: 7px 18px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  color: #706F84;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.organic-nav-link:hover {
+  color: #1A1A2E;
+}
+.organic-nav-link.active {
+  color: #1A1A2E;
+  border-color: #D4D2CC;
+}
+
+/* ─── CTA Pill Button (hero, yield.xyz style) ─────────────────────────── */
+
+.cta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #1A1A2E;
+  color: #FFFFFF;
+  border-radius: 10px;
+  padding: 14px 16px 14px 28px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+}
+.cta-pill:hover {
+  background: #252538;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.cta-pill-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7B3FE4 0%, #A78BFA 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ─── Floating Card on Dark — very organic shape ────────────────────────── */
+
+.float-card {
+  background: #FFFFFF;
+  border-radius: 28px;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.2);
+  color: #1A1A2E;
+}
+@media (min-width: 768px) {
+  .float-card { border-radius: 32px; }
+}
+
+/* ─── Merged Panel Junction — continuous white bridge with concave curves ── */
+@media (min-width: 1024px) {
+  .merged-panel-a {
+    position: relative;
+    border-top-left-radius: 32px !important;
+    border-top-right-radius: 32px !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-left-radius: 32px !important;
+  }
+
+  /* White bridge at junction: clip-path cuts true-transparent quarter-circles */
+  .merged-panel-a::after {
+    content: '';
+    position: absolute;
+    bottom: -56px;
+    right: -56px;
+    width: 112px;
+    height: 112px;
+    background: #FFFFFF;
+    clip-path: path('M 0,0 H 56 A 56,56 0 0 0 112,56 V 112 H 56 A 56,56 0 0 0 0,56 Z');
+    z-index: 1;
+  }
+
+  .merged-panel-b {
+    position: relative;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 32px !important;
+    border-bottom-right-radius: 32px !important;
+    border-bottom-left-radius: 32px !important;
+  }
+}
+
+/* ─── Subtle card on white bg ───────────────────────────────────────────── */
+
+.subtle-card {
+  background: #F9F8F5;
+  border: 1px solid #E8E6E0;
+  border-radius: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.subtle-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Tier card (Agent Classes section) ─────────────────────────────────── */
+
+.tier-card {
+  background: #FFFFFF;
+  border: 1px solid #E8E6E0;
+  border-radius: 16px;
+  transition: transform 0.2s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Large faint ordinal watermark in bottom-right */
+.tier-card::before {
+  content: attr(data-ordinal);
+  position: absolute;
+  bottom: -12px;
+  right: -4px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tier-accent, #E8E6E0);
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tier-card:hover::before {
+  opacity: 0.1;
+}
+
+.tier-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+}
+
+.tier-card.tier-popular {
+  border: 1px solid #E8E6E0;
+  background: #FFFFFF;
+}
+
+.tier-card.tier-popular:hover {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+}
+
+/* Inset variant — cards on white background */
+.tier-card.tier-card-inset {
+  border-color: #E8E6E0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.tier-card.tier-card-inset:hover {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+}
+
+.tier-card.tier-card-inset.tier-popular {
+  border-color: #E8E6E0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.tier-card.tier-card-inset.tier-popular:hover {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+}
+
+/* ─── Learn-more pill link ──────────────────────────────────────────────── */
+
+.learn-more-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 18px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.learn-more-pill:hover {
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ─── Ambient Glow Blobs ──────────────────────────────────────────────── */
+
+.section-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.section-glow-violet {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(123,63,228,0.10) 0%, transparent 70%);
+}
+
+.section-glow-warm {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(123,63,228,0.08) 0%, rgba(167,139,250,0.06) 40%, transparent 70%);
+}
+
+.section-glow-rose {
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%);
+}
+
+/* ─── Ultraviolet Blob Swarm Background ──────────────────────────────── */
+
+.swarm-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.swarm-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+
+/* Individual blob configs — each has unique size, position, color, and drift path */
+
+.swarm-blob-1 {
+  width: 45vw;
+  height: 45vw;
+  max-width: 700px;
+  max-height: 700px;
+  background: radial-gradient(circle at 40% 40%,
+    rgba(123, 63, 228, 0.10) 0%,
+    rgba(91, 33, 182, 0.06) 40%,
+    transparent 70%);
+  top: -8%;
+  left: -12%;
+  animation: swarm-drift-1 28s ease-in-out infinite;
+}
+
+.swarm-blob-2 {
+  width: 38vw;
+  height: 38vw;
+  max-width: 580px;
+  max-height: 580px;
+  background: radial-gradient(circle at 60% 30%,
+    rgba(192, 132, 252, 0.14) 0%,
+    rgba(167, 139, 250, 0.08) 35%,
+    rgba(139, 92, 246, 0.04) 55%,
+    transparent 72%);
+  top: -5%;
+  right: -8%;
+  animation: swarm-drift-2 34s ease-in-out infinite;
+}
+
+.swarm-blob-3 {
+  width: 50vw;
+  height: 50vw;
+  max-width: 800px;
+  max-height: 800px;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(109, 40, 217, 0.07) 0%,
+    rgba(76, 29, 149, 0.04) 50%,
+    transparent 72%);
+  top: 40%;
+  left: 20%;
+  animation: swarm-drift-3 38s ease-in-out infinite;
+}
+
+.swarm-blob-4 {
+  width: 32vw;
+  height: 32vw;
+  max-width: 500px;
+  max-height: 500px;
+  background: radial-gradient(circle at 35% 65%,
+    rgba(147, 51, 234, 0.09) 0%,
+    rgba(124, 58, 237, 0.05) 40%,
+    transparent 68%);
+  bottom: 5%;
+  right: 5%;
+  animation: swarm-drift-4 32s ease-in-out infinite;
+}
+
+.swarm-blob-5 {
+  width: 28vw;
+  height: 28vw;
+  max-width: 440px;
+  max-height: 440px;
+  background: radial-gradient(circle at 55% 45%,
+    rgba(168, 85, 247, 0.07) 0%,
+    rgba(192, 132, 252, 0.04) 50%,
+    transparent 70%);
+  bottom: 25%;
+  left: -8%;
+  animation: swarm-drift-5 30s ease-in-out infinite;
+}
+
+.swarm-blob-6 {
+  width: 22vw;
+  height: 22vw;
+  max-width: 350px;
+  max-height: 350px;
+  background: radial-gradient(circle at 45% 55%,
+    rgba(139, 92, 246, 0.10) 0%,
+    rgba(109, 40, 217, 0.05) 45%,
+    transparent 70%);
+  top: 60%;
+  right: 25%;
+  animation: swarm-drift-6 26s ease-in-out infinite;
+}
+
+/* Top-right corner accent — bright concentrated hotspot */
+.swarm-blob-7 {
+  width: 20vw;
+  height: 20vw;
+  max-width: 320px;
+  max-height: 320px;
+  background: radial-gradient(circle at 65% 35%,
+    rgba(216, 180, 254, 0.18) 0%,
+    rgba(192, 132, 252, 0.12) 30%,
+    rgba(167, 139, 250, 0.06) 55%,
+    transparent 70%);
+  top: 2%;
+  right: 4%;
+  filter: blur(90px);
+  animation: swarm-drift-7 22s ease-in-out infinite;
+}
+
+/* Top-right wide wash — softer, larger halo behind the hotspot */
+.swarm-blob-8 {
+  width: 35vw;
+  height: 30vw;
+  max-width: 550px;
+  max-height: 470px;
+  background: radial-gradient(ellipse at 70% 30%,
+    rgba(196, 148, 255, 0.12) 0%,
+    rgba(168, 85, 247, 0.07) 35%,
+    rgba(139, 92, 246, 0.03) 60%,
+    transparent 75%);
+  top: -4%;
+  right: -3%;
+  filter: blur(140px);
+  animation: swarm-drift-8 36s ease-in-out infinite;
+}
+
+/* Noise/grain texture overlay for depth */
+.swarm-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+}
+
+/* Drift keyframes — organic, asymmetric paths that feel alive */
+
+@keyframes swarm-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(8vw, 5vh) scale(1.08); }
+  45% { transform: translate(3vw, 12vh) scale(0.95); }
+  70% { transform: translate(-4vw, 7vh) scale(1.05); }
+  85% { transform: translate(-2vw, 2vh) scale(0.98); }
+}
+
+@keyframes swarm-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  15% { transform: translate(-6vw, 4vh) scale(1.06); }
+  40% { transform: translate(-10vw, -3vh) scale(0.92); }
+  60% { transform: translate(-4vw, -8vh) scale(1.1); }
+  80% { transform: translate(2vw, -4vh) scale(1.02); }
+}
+
+@keyframes swarm-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-6vw, -5vh) scale(1.12); }
+  50% { transform: translate(4vw, -10vh) scale(0.9); }
+  75% { transform: translate(8vw, -3vh) scale(1.05); }
+}
+
+@keyframes swarm-drift-4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(-5vw, -6vh) scale(1.1); }
+  50% { transform: translate(3vw, -12vh) scale(0.93); }
+  75% { transform: translate(7vw, -5vh) scale(1.04); }
+}
+
+@keyframes swarm-drift-5 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(6vw, -4vh) scale(1.07); }
+  55% { transform: translate(10vw, 3vh) scale(0.94); }
+  80% { transform: translate(4vw, 6vh) scale(1.03); }
+}
+
+@keyframes swarm-drift-6 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(-3vw, 5vh) scale(1.15); }
+  45% { transform: translate(4vw, 8vh) scale(0.88); }
+  70% { transform: translate(7vw, 3vh) scale(1.08); }
+  90% { transform: translate(2vw, -2vh) scale(0.96); }
+}
+
+@keyframes swarm-drift-7 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-3vw, 2vh) scale(1.12); }
+  50% { transform: translate(-1vw, 5vh) scale(0.95); }
+  75% { transform: translate(2vw, 3vh) scale(1.06); }
+}
+
+@keyframes swarm-drift-8 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(-4vw, 3vh) scale(1.05); }
+  45% { transform: translate(-2vw, -2vh) scale(1.1); }
+  65% { transform: translate(3vw, 1vh) scale(0.96); }
+  85% { transform: translate(1vw, -1vh) scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swarm-blob { animation: none !important; }
+}
+
+/* Dark card variant */
+.card-dark {
+  background: #1E2023;
+  border-radius: 20px;
+}
+
+/* Translucent card on dark */
+.card-glass-dark {
+  background: rgba(255,255,255,0.06);
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Legacy card-on-dark — kept for compat */
+.card-on-dark {
+  background: #FFFFFF;
+  border-radius: 28px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+}
+
+/* Smooth transition standard */
+.transition-smooth {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Eigen Detail — editorial section title ────────────────────────────── */
+.detail-section-title {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 0.875rem;
+  color: #706F84;
+  letter-spacing: -0.01em;
+  font-style: italic;
+}
+
+/* ─── Eigen Detail — breadcrumb nav ─────────────────────────────────────── */
+.detail-breadcrumb {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 0.75rem;
+  color: #706F84;
+  letter-spacing: 0.02em;
+}
+.detail-breadcrumb a {
+  transition: color 0.2s ease;
+}
+.detail-breadcrumb a:hover {
+  color: #7B3FE4;
+}
+
+/* ─── Toast slide-up ─────────────────────────────────────────────────────── */
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Reveal ─────────────────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .card-lift { transition: none; }
+  .card-lift:hover { transform: none; }
+}
+
+/* ─── Card hover ─────────────────────────────────────────────────────────── */
+.card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Marquee ────────────────────────────────────────────────────────────── */
+.marquee-container {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+}
+.marquee-track {
+  display: flex;
+  gap: 4rem;
+  width: max-content;
+  animation: marquee 50s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ─── Data Table ─────────────────────────────────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  color: #706F84;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 7px 14px;
+  border-bottom: 1px solid #E0DED8;
+}
+.data-table td {
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(224, 222, 216, 0.3);
+  font-size: 13px;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: rgba(237, 235, 229, 0.4); }
+
+/* ─── App Island ────────────────────────────────────────────────────────── */
+
+.app-island-body {
+  background: #FFFFFF;
+  border-radius: 0 0 20px 20px;
+  margin-top: -1px;
+  position: relative;
+  z-index: 2;
+  color: #1A1A2E;
+}
+
+@media (min-width: 768px) {
+  .app-island-body {
+    border-radius: 0 0 22px 22px;
+  }
+}
+
+/* ─── ERC-8004 Hole — clip-path overlay (vector, device-pixel resolution) ── */
+/* Instead of CSS mask (rasterizes at 1x), we use a white div with
+   clip-path(evenodd) in the TSX that punches a true transparent hole.
+   The island bg must be transparent so the dark page bg shows through. */
+@media (min-width: 1024px) {
+  .app-island-body.eigen-detail-island {
+    background: transparent;
+    overflow: hidden;
+    z-index: 4;
+  }
+}
+
+/* ─── Inverse-L Layout (eigen detail page) ───────────────────────────────── */
+
+.inverse-l-dark {
+  position: relative;
+}
+
+/* Concave corner at bottom-right of dark area — clip-path for crisp edges */
+.inverse-l-dark::after {
+  content: '';
+  position: absolute;
+  bottom: -28px;
+  right: -28px;
+  width: 56px;
+  height: 56px;
+  background: #FFFFFF;
+  clip-path: path('M 0,0 H 28 A 28,28 0 0 0 56,28 V 56 H 28 A 28,28 0 0 0 0,28 Z');
+  z-index: 1;
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .inverse-l-dark::after {
+    display: block;
+  }
+}
+
+/* ─── Anti-diagonal merged panels — white cards on dark, mask-based bridge ── */
+@media (min-width: 1024px) {
+  .merged-panel-tr {
+    position: relative;
+    border-top-left-radius: 0 !important;     /* flush with header above */
+    border-top-right-radius: 0 !important;     /* flush with island above */
+    border-bottom-right-radius: 32px !important; /* organic curve facing dark */
+    border-bottom-left-radius: 0 !important;   /* junction with bottom-left */
+  }
+
+  /* Seamless white strip extending upward to overlap body bottom edge */
+  .merged-panel-tr::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 0;
+    right: 22px;
+    height: 8px;
+    background: #FFFFFF;
+    border-top-right-radius: 22px;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* White bridge at junction — mask punches true-transparent cutouts */
+  .merged-panel-tr::after {
+    content: '';
+    position: absolute;
+    bottom: -56px;
+    left: -56px;
+    width: 112px;
+    height: 112px;
+    background: #FFFFFF;
+    clip-path: path('M 56,0 H 112 V 56 A 56,56 0 0 0 56,112 H 0 V 56 A 56,56 0 0 0 56,0 Z');
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .merged-panel-bl {
+    position: relative;
+    border-top-left-radius: 32px !important;   /* organic curve facing dark */
+    border-top-right-radius: 0 !important;     /* junction with top-right */
+    border-bottom-right-radius: 32px !important;
+    border-bottom-left-radius: 32px !important;
+  }
+}
+
+/* ─── Branded chart card (light theme on white panel) ───────────────────── */
+.chart-card {
+  background: linear-gradient(180deg, #FAFAF8 0%, #F5F3EE 100%);
+  border: 1px solid rgba(123, 63, 228, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+/* ─── Range slider purple thumb ──────────────────────────────────────────── */
+input[type="range"]::-webkit-slider-thumb {
+  background: #7B3FE4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hero-headline {
+  font-size: clamp(2.8rem, 5.5vw, 5.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 400;
+  color: #1A1A2E;
+}
+
+.hero-em {
+  font-style: italic;
+  background: linear-gradient(135deg, #7B3FE4, #A78BFA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-size: clamp(1rem, 1.2vw, 1.15rem);
+  line-height: 1.75;
+  font-weight: 400;
+}
+
+.hero-ticker { display: flex; align-items: center; gap: 6px; }
+
+.hero-ticker-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #16A34A;
+  animation: tickerPulse 2s ease-in-out infinite;
+}
+
+@keyframes tickerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(22, 163, 74, 0); }
+}
+
+@keyframes heroGlowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* ─── Landing entrance animations ─────────────────────────────────────── */
+
+/* White cover — starts covering entire viewport, fades as shapes contract */
+.page-entrance-cover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #FFFFFF;
+  z-index: 10;
+  pointer-events: none;
+  animation: cover-fade 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes cover-fade {
+  0%, 35% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Drop-in — elements fall from above, clean and slick */
+@keyframes drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hero text — slides up with subtle blur dissolve */
+@keyframes hero-text-in {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.anim-drop-in {
+  opacity: 0;
+  animation: drop-in 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.anim-hero-text {
+  opacity: 0;
+  animation: hero-text-in 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-entrance-cover { animation: none; opacity: 0; }
+  .anim-drop-in,
+  .anim-hero-text {
+    opacity: 1;
+    animation: none;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Mascot gentle float */
+@keyframes mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+
+.hero-logo-large {
+  width: 340px; height: 340px;
+  filter: drop-shadow(0 0 40px rgba(123, 63, 228, 0.12));
+}
+
+.nav-wordmark {
+  filter: brightness(0) saturate(100%);
+  opacity: 0.85;
+}
+
+.footer-wordmark {
+  filter: brightness(0) saturate(100%);
+  opacity: 0.7;
+}
+
+.font-display {
+  transform: scaleY(0.97);
+  transform-origin: top;
+}
+
+@media (max-width: 1023px) {
+  .hero-headline { max-width: 100%; }
+}
+@media (min-width: 1024px) {
+  .hero-logo-large { width: 380px; height: 380px; }
+}
+@media (min-width: 1280px) {
+  .hero-logo-large { width: 420px; height: 420px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INSTALL / GET STARTED SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.install-toggle {
+  display: inline-flex;
+  background: #EDEBE5;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.install-toggle-btn {
+  padding: 6px 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #706F84;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.install-toggle-btn.active {
+  background: #FFFFFF;
+  color: #1A1A2E;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.install-toggle-btn:hover:not(.active) { color: #55546B; }
+
+.install-code-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #EDEBE5;
+  border: 1px solid #E0DED8;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.install-code {
+  flex: 1; margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #1A1A2E;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.install-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #706F84;
+  background: #FFFFFF;
+  border: 1px solid #E0DED8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.install-copy-btn:hover {
+  color: #1A1A2E;
+  border-color: #CCC9C0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.install-steps {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.install-steps li {
+  font-size: 0.8125rem;
+  color: #55546B;
+  line-height: 1.5;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.install-step-num {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.75rem;
+  color: #706F84;
+  flex-shrink: 0;
+}

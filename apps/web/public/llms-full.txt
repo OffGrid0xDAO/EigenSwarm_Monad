@@ -1,0 +1,190 @@
+# EigenSwarm — Complete Product Documentation
+
+> Autonomous market making agents on Monad. Deploy AI-powered Eigens that generate volume, manage spreads, and capture 100% of LP fees on nad.fun tokens.
+
+---
+
+## What is EigenSwarm?
+
+EigenSwarm is an autonomous market making platform built on Monad. It lets anyone deploy AI-powered trading agents — called **Eigens** — that provide liquidity and market making for tokens on nad.fun, Monad's leading token launchpad.
+
+Each Eigen creates a **dedicated liquidity pool** for a specific token. The agent autonomously:
+
+- Generates trading volume through strategic buy/sell execution
+- Manages bid-ask spreads to maintain healthy order books
+- Captures **100% of LP fees** from every trade and routes them to the user
+- Adapts strategy based on market conditions (higher-tier agents use AI evaluation)
+
+Unlike traditional market making bots that require manual configuration, Eigens are fully autonomous. You deploy one, deposit funds, and the agent handles everything.
+
+## How It Works
+
+### 1. Token Selection
+Choose an existing nad.fun token or launch a new one directly through EigenSwarm.
+
+### 2. Agent Deployment
+Select an agent tier (Lite, Core, Pro, or Ultra) and deposit the minimum required funds. EigenSwarm creates a dedicated LP pool and deploys your Eigen.
+
+### 3. Autonomous Market Making
+The Eigen begins trading autonomously. It executes buy and sell orders to generate volume and maintain spreads. All LP fees from trades in the dedicated pool flow to you.
+
+### 4. Fee Collection
+100% of LP fees go to the user. EigenSwarm only charges a protocol fee on positive P&L (profit), not on the principal or total volume.
+
+## Agent Tiers
+
+EigenSwarm offers four agent classes, each designed for different scale and sophistication:
+
+### Lite Agent
+- **Minimum Deposit**: $50
+- **Max Daily Volume**: $500
+- **Protocol Fee**: 3% (on positive P&L only)
+- **Features**: Basic autonomous market making, dedicated LP pool, volume generation
+- **Best For**: Small tokens, testing the platform, low-budget market making
+
+### Core Agent
+- **Minimum Deposit**: $200
+- **Max Daily Volume**: $5,000
+- **Protocol Fee**: 5% (on positive P&L only)
+- **Features**: Everything in Lite plus higher volume capacity, improved spread management
+- **Best For**: Growing tokens that need consistent liquidity, most popular tier
+
+### Pro Agent
+- **Minimum Deposit**: $500
+- **Max Daily Volume**: $25,000
+- **Protocol Fee**: 7% (on positive P&L only)
+- **Features**: Everything in Core plus AI-driven evaluation, adaptive strategy, advanced spread management
+- **Best For**: Established tokens requiring professional-grade market making
+
+### Ultra Agent
+- **Minimum Deposit**: $2,000
+- **Max Daily Volume**: $100,000+
+- **Protocol Fee**: 10% (on positive P&L only)
+- **Features**: Full AI suite, maximum volume, priority execution, all advanced strategies
+- **Best For**: High-cap tokens, projects requiring institutional-grade liquidity
+
+## LP Fee Structure
+
+On nad.fun, trading fees are normally split:
+- 40% to the token creator
+- 40% to the platform (nad.fun)
+- 20% to the protocol
+
+With EigenSwarm, your Eigen operates its own dedicated LP pool. **100% of the LP fees generated in that pool go to you.** This is fundamentally different from other market making solutions where fees are split with infrastructure providers.
+
+EigenSwarm's revenue model is based on a protocol fee charged only on **positive P&L** — meaning you only pay when your agent is profitable.
+
+## Blockchain & Infrastructure
+
+### Monad
+EigenSwarm runs on **Monad**, a high-performance EVM-compatible Layer 1 blockchain. Monad provides:
+- High throughput for rapid trade execution
+- Low transaction costs
+- Full EVM compatibility (Solidity smart contracts)
+- Sub-second finality
+
+### nad.fun Integration
+nad.fun is the leading token launchpad on Monad. EigenSwarm integrates directly with nad.fun to provide automated market making for tokens launched there. The integration enables:
+- Direct token launch from EigenSwarm's interface
+- Automatic LP pool creation on nad.fun
+- Seamless fee routing
+
+## Smart Contract Architecture
+
+EigenSwarm uses on-chain smart contracts for:
+- **LP Pool Management**: Each Eigen gets a dedicated pool with isolated funds
+- **Fee Collection**: Automated fee routing to user wallets
+- **Agent Registry**: On-chain record of all deployed Eigens and their configurations
+
+All contracts are deployed on Monad and are EVM-compatible.
+
+## Key Features
+
+### Dedicated LP Pools
+Every Eigen creates its own LP pool. This means your liquidity is never mixed with others, and all fees generated from trades in that pool are yours.
+
+### 100% Fee Capture
+Traditional LP positions on AMMs split fees. EigenSwarm's architecture gives you the full fee from every trade in your dedicated pool.
+
+### AI-Powered Trading
+Higher-tier agents (Pro and Ultra) use AI evaluation to:
+- Assess market conditions in real-time
+- Adjust spread width dynamically
+- Optimize volume generation patterns
+- Minimize adverse selection
+
+### Autonomous Operation
+Once deployed, Eigens run 24/7 without manual intervention. They handle:
+- Order placement and cancellation
+- Spread adjustment based on volatility
+- Volume pacing to avoid market impact
+- Fund management within the deposit
+
+### Real-Time Monitoring
+The EigenSwarm dashboard provides live metrics:
+- Current P&L
+- Total volume generated
+- Fee income
+- Agent status and health
+- Trade history
+
+## Getting Started
+
+### Deploy an Eigen for an Existing Token
+1. Connect your wallet at [eigenswarm.xyz](https://eigenswarm.xyz)
+2. Navigate to **Deploy**
+3. Enter the nad.fun token address
+4. Select an agent tier
+5. Deposit the minimum required funds
+6. Your Eigen begins market making immediately
+
+### Launch a New Token with an Eigen
+1. Connect your wallet at [eigenswarm.xyz](https://eigenswarm.xyz)
+2. Navigate to **Launch**
+3. Configure your token (name, symbol, supply, image)
+4. Select an agent tier for automatic market making
+5. Deposit funds
+6. Your token launches on nad.fun with an active Eigen providing liquidity from day one
+
+## Payment
+
+EigenSwarm supports payment in:
+- **MON** (Monad's native token)
+- **ETH** (bridged to Monad)
+
+Deposits are used as trading capital for the Eigen. The protocol fee is deducted from positive P&L only.
+
+## Frequently Asked Questions
+
+### What is EigenSwarm?
+EigenSwarm is an autonomous market making platform on Monad that deploys AI-powered trading agents (called Eigens) for nad.fun tokens. Each agent manages a dedicated LP pool, generating trading volume, managing spreads, and capturing 100% of LP fees for the user.
+
+### How does EigenSwarm market making work?
+You deploy an Eigen that creates a dedicated liquidity pool for your token. The agent autonomously executes trades to generate volume and manage spreads. All LP fees from every trade flow directly to you. The protocol only charges a fee on positive P&L.
+
+### What are the agent tiers?
+Lite ($50 min, $500/day, 3% fee), Core ($200 min, $5K/day, 5% fee), Pro ($500 min, $25K/day, 7% fee), Ultra ($2,000 min, $100K+/day, 10% fee). Higher tiers include AI-driven strategies.
+
+### What blockchain does EigenSwarm run on?
+EigenSwarm runs on Monad, a high-performance EVM-compatible blockchain. It integrates with nad.fun, the leading token launchpad on Monad.
+
+### How do I deploy an Eigen?
+Connect your wallet at eigenswarm.xyz, choose a token (or launch a new one), select an agent tier, and deposit funds. The Eigen starts market making immediately.
+
+### What chains are supported?
+Currently EigenSwarm is live on Monad. Future chain expansion is planned.
+
+### What is ERC-8004?
+ERC-8004 is a token standard relevant to the EigenSwarm ecosystem for enabling agent-managed liquidity pools with standardized interfaces. It defines how autonomous agents interact with on-chain LP positions.
+
+### How do fees work?
+100% of LP fees from your dedicated pool go to you. EigenSwarm charges a protocol fee only on positive P&L (profit), ranging from 3% (Lite) to 10% (Ultra) depending on your agent tier.
+
+### How is EigenSwarm different from other market making bots?
+EigenSwarm deploys a dedicated LP pool where 100% of fees go to the user. Traditional bots split fees with infrastructure providers. Eigens are also AI-powered with autonomous decision making — no manual configuration required.
+
+## Links
+
+- **Website**: [eigenswarm.xyz](https://eigenswarm.xyz)
+- **Twitter/X**: [@eigenswarm](https://twitter.com/eigenswarm)
+- **GitHub**: [github.com/eigenswarm](https://github.com/eigenswarm)

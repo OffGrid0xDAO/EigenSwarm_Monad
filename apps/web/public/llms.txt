@@ -1,0 +1,36 @@
+# EigenSwarm
+
+> Autonomous market making agents on Monad. Deploy AI-powered Eigens that generate volume, manage spreads, and capture 100% of LP fees on nad.fun tokens.
+
+## About
+
+EigenSwarm is a protocol-grade market making infrastructure platform built on Monad. Users deploy autonomous AI agents (called "Eigens") that create dedicated liquidity pools for nad.fun tokens. Each agent autonomously executes trades to generate trading volume, manage bid-ask spreads, and route 100% of LP fees back to the user. The protocol only charges a fee on positive P&L.
+
+## Key Pages
+
+- [Home](https://eigenswarm.xyz): Landing page with product overview, agent tiers, and how it works
+- [Agent Classes](https://eigenswarm.xyz/agents): Four agent tiers — Lite, Core, Pro, Ultra — with pricing and capabilities
+- [Documentation](https://eigenswarm.xyz/docs): Technical documentation and guides
+- [Launch](https://eigenswarm.xyz/app/launch): Launch a new token with an EigenSwarm agent
+- [Deploy](https://eigenswarm.xyz/app/deploy): Deploy an Eigen agent for an existing token
+- [Full Documentation for LLMs](https://eigenswarm.xyz/llms-full.txt): Complete product documentation in a single file
+
+## Agent Tiers
+
+- **Lite**: $50 min deposit, up to $500/day volume, 3% protocol fee
+- **Core**: $200 min deposit, up to $5K/day volume, 5% protocol fee
+- **Pro**: $500 min deposit, up to $25K/day volume, 7% protocol fee, AI evaluation
+- **Ultra**: $2,000 min deposit, up to $100K+/day volume, 10% protocol fee, full AI suite
+
+## Chain
+
+- Monad (EVM-compatible, high-performance L1)
+
+## Integration
+
+- nad.fun (token launchpad on Monad)
+
+## Contact
+
+- Twitter/X: [@eigenswarm](https://twitter.com/eigenswarm)
+- Website: [eigenswarm.xyz](https://eigenswarm.xyz)
