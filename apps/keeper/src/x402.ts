@@ -123,9 +123,19 @@ export function build402Response(
   extensions?: Record<string, unknown>,
 ): X402PaymentRequired {
   const requirements = buildPaymentRequirements(pkg, endpoint, network);
+  // v2 Accepts: only include fields defined in the x402 v2 spec
+  const accepts = {
+    scheme: requirements.scheme,
+    network: requirements.network,
+    amount: requirements.amount,
+    payTo: requirements.payTo,
+    maxTimeoutSeconds: requirements.maxTimeoutSeconds,
+    asset: requirements.asset,
+    extra: requirements.extra,
+  };
   return {
     x402Version: 2,
-    accepts: [requirements],
+    accepts: [accepts],
     resource: {
       url: requirements.resource,
       description: requirements.description,
