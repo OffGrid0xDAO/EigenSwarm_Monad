@@ -102,16 +102,55 @@ Agents register as NFTs on the [ERC-8004](https://github.com/sudeepb02/awesome-e
 - Transferable ownership — transfer the NFT, transfer the agent
 
 ### x402 — Autonomous Agent Payments
-The [x402 protocol](https://docs.monad.xyz/guides/x402-guide) lets any agent pay for MM services with USDC:
+
+EigenSwarm implements the [x402 payment protocol](https://docs.monad.xyz/guides/x402-guide) — the HTTP `402 Payment Required` standard that lets any AI agent pay for services with USDC, no API keys or human approval needed.
+
+**Why x402 matters:** Traditional APIs require signup, API keys, and billing accounts. x402 flips this — any agent with a wallet and USDC can consume the EigenSwarm API instantly. This is how agent-to-agent commerce works on Monad.
+
+**The flow:**
 
 ```
-1. POST /api/agents/buy-volume          → 402: "Send 10 USDC to 0x..."
-2. Agent sends USDC on Monad            → tx confirmed in 400ms
-3. POST /api/agents/buy-volume           → 201: { eigenId: "ES-a1f2", status: "active" }
-   + header X-PAYMENT: 0xtxhash
+┌─────────────────────────────────────────────────────────────────────┐
+│                         x402 Payment Flow                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Agent                           Keeper API                         │
+│    │                                │                               │
+│    ├─ POST /api/agents/buy-volume ──►│                              │
+│    │  { tokenAddress, packageId }    │                              │
+│    │                                 │                              │
+│    │◄── 402 Payment Required ────────┤                              │
+│    │  { amount: "10", token: "USDC", │                              │
+│    │    recipient: "0x...",           │                              │
+│    │    chain: "monad" }             │                              │
+│    │                                 │                              │
+│    ├─ USDC.transfer(recipient, 10) ──► Monad (400ms confirmation)  │
+│    │  tx: 0xabc123...               │                               │
+│    │                                 │                              │
+│    ├─ POST /api/agents/buy-volume ──►│                              │
+│    │  + header X-PAYMENT: 0xabc123   │                              │
+│    │                                 ├─ Verify USDC transfer        │
+│    │                                 ├─ Swap USDC → MON (treasury)  │
+│    │                                 ├─ Fund EigenVault             │
+│    │                                 ├─ Spin up trading agent       │
+│    │◄── 201 Created ────────────────┤                               │
+│    │  { eigenId: "ES-a1f2",         │                               │
+│    │    status: "active",            │                              │
+│    │    funding: { funded: true } }  │                              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-An AI agent with a wallet can autonomously discover EigenSwarm, pay for a market maker, add it to any nad.fun token, and monitor performance — **all via HTTP**. This is agent-to-agent commerce on Monad.
+**Two x402-powered operations:**
+
+| Operation | Endpoint | What happens |
+|-----------|----------|-------------|
+| **Buy Volume** | `POST /api/agents/buy-volume` | Pay USDC → market-making agent added to any existing nad.fun token |
+| **Launch Token** | `POST /api/launch` | Pay USDC → new token created on nad.fun + LP seeded + agent starts trading |
+
+**Payment verification:** The keeper verifies the USDC transfer on-chain via ERC-20 Transfer event logs on Monad (chain ID 143). No third-party facilitator required — fully trustless verification against the Monad RPC.
+
+**What this enables:** An AI agent running autonomously can discover a promising nad.fun token, pay 10 USDC via a single HTTP flow, and have a market maker live and trading within seconds — all without a human ever being involved. This is the first implementation of x402-powered market making infrastructure on Monad.
 
 ### Atomic Token Launch on nad.fun
 Launch a new token with market making in **a single atomic transaction**:
