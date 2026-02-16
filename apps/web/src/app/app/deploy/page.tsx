@@ -421,7 +421,7 @@ export default function DeployPage() {
                 || parseFloat(ethDeposit) < classConfig.minDeposit
               }
             >
-              {(isMonad ? registerEigen.isSuccess : isSuccess) ? 'Deployed!' : 'Deploy Eigen'}
+              {(isMonad ? registerEigen.isSuccess : isSuccess) ? 'Agent Added!' : 'Add Agent'}
             </GlowButton>
           </div>
         </div>
@@ -442,7 +442,7 @@ export default function DeployPage() {
             </div>
 
             <h3 className="text-lg font-semibold text-txt-primary text-center mb-2">
-              Eigen Deployed Successfully
+              Agent Added Successfully
             </h3>
             <p className="text-sm text-txt-muted text-center mb-6">
               Your <span className="font-medium text-txt-primary">{classConfig.label}</span> eigen for <span className="font-mono text-txt-primary">${tokenData?.symbol || 'UNKNOWN'}</span> is now live.

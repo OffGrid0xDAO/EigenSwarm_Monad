@@ -4527,6 +4527,61 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
+  // POST /api/admin/cleanup-lps — remove all LP positions from EigenLP (temporary admin tool)
+  if (method === 'POST' && path === '/api/admin/cleanup-lps') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const eigenIds: string[] = body?.eigenIds || [];
+      if (!eigenIds.length) {
+        return json(res, { error: 'eigenIds array required (short IDs like ES-xxx)' }, 400);
+      }
+
+      const LP_ADDR = (process.env.EIGENLP_ADDRESS || EIGENLP_ADDRESS) as `0x${string}`;
+      const wallet = getWalletClient(143);
+      const client = getPublicClient(143);
+      const results: { eigenId: string; bytes32: string; tokenId: string; status: string; txHash?: string; error?: string }[] = [];
+
+      for (const shortId of eigenIds) {
+        const bytes32Id = eigenIdToBytes32(shortId);
+        try {
+          const position = await client.readContract({
+            address: LP_ADDR,
+            abi: EIGENLP_ABI,
+            functionName: 'getPosition',
+            args: [bytes32Id],
+          }) as any[];
+
+          const tokenId = position[0] as bigint;
+          if (!tokenId || tokenId === 0n) {
+            results.push({ eigenId: shortId, bytes32: bytes32Id, tokenId: '0', status: 'no_position' });
+            continue;
+          }
+
+          const { request } = await client.simulateContract({
+            account: wallet.account,
+            address: LP_ADDR,
+            abi: EIGENLP_ABI,
+            functionName: 'removeLiquidity',
+            args: [bytes32Id, 0n, 0n],
+          });
+          const txHash = await wallet.writeContract(request);
+          await client.waitForTransactionReceipt({ hash: txHash, timeout: 90_000 });
+
+          results.push({ eigenId: shortId, bytes32: bytes32Id, tokenId: tokenId.toString(), status: 'removed', txHash });
+          console.log(`[CleanupLP] Removed LP for ${shortId} (tokenId=${tokenId}): ${txHash}`);
+        } catch (err) {
+          const errMsg = (err as any)?.shortMessage || (err as Error).message;
+          results.push({ eigenId: shortId, bytes32: bytes32Id, tokenId: '?', status: 'error', error: errMsg });
+          console.error(`[CleanupLP] Failed for ${shortId}:`, errMsg);
+        }
+      }
+
+      return json(res, { success: true, results });
+    } catch (error) {
+      return json(res, { error: (error as Error).message }, 500);
+    }
+  }
+
   // 404
   json(res, { error: 'Not found' }, 404);
 }
