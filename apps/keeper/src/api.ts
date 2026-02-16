@@ -2165,9 +2165,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             }) as bigint;
 
             const eigenIdBytes32 = eigenIdToBytes32(eigenId);
-            // Default initial price for V4 pool (~0.00005 MON/token)
-            const defaultSqrtPriceX96 = 5602277097478614n;
             const tradingFeeBps = BigInt(Math.round(classConfig.protocolFee * 100));
+
+            // ── Calculate sqrtPriceX96 dynamically from bonding curve estimate ──
+            // nad.fun bonding curve: constant product with virtual reserves
+            // tokensOut = virtualTokenReserve * devBuyMon / (virtualMonReserve + devBuyMon)
+            const NADFUN_VIRTUAL_MON = 180_000n * 10n ** 18n;
+            const NADFUN_VIRTUAL_TOKEN = 1_073_000_191n * 10n ** 18n;
+            const expectedTokensOut = (NADFUN_VIRTUAL_TOKEN * devBuyEth) / (NADFUN_VIRTUAL_MON + devBuyEth);
+
+            // V4 pool price = tokens per MON (currency1/currency0 ratio in raw units)
+            const tokensOutNum = parseFloat(formatEther(expectedTokensOut));
+            const lpMonNum = parseFloat(formatEther(liquidityEth));
+            const priceTokensPerMon = tokensOutNum / lpMonNum;
+            const dynamicSqrtPriceX96 = priceToSqrtPriceX96(priceTokensPerMon);
+            console.log(`[Launch] Dynamic sqrtPriceX96: ${dynamicSqrtPriceX96} (price=${priceTokensPerMon.toFixed(2)} tokens/MON, est. tokens=${tokensOutNum.toFixed(0)})`);
 
             // ── Upload image + metadata to nad.fun API for proper visibility ──
             // nad.fun requires ALL images go through their upload API for NSFW check
@@ -2230,7 +2242,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
                 1, // actionId: 1 for nad.fun official flow
                 0n, // minTokensOut: 0 (no slippage check on deploy)
                 eigenIdBytes32,
-                defaultSqrtPriceX96,
+                dynamicSqrtPriceX96,
                 tradingFeeBps,
                 devBuyEth,
                 liquidityEth,

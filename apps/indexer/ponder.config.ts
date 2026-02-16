@@ -20,7 +20,8 @@ export default createConfig({
     monad: {
       id: 143,
       rpc: rpcList,
-      pollingInterval: 1_000,
+      pollingInterval: 2_000,
+      maxRequestsPerSecond: 10,
     },
   },
   contracts: {
@@ -28,13 +29,13 @@ export default createConfig({
       chain: 'monad',
       abi: EIGENVAULT_ABI,
       address: (process.env.EIGENVAULT_ADDRESS || '0x1003EdcD563Dcae3Bc1685b901fc692bbD2d941b') as `0x${string}`,
-      startBlock: Number(process.env.EIGENVAULT_START_BLOCK || 0),
+      startBlock: Number(process.env.EIGENVAULT_START_BLOCK || 55_529_643),
     },
     EigenLP: {
       chain: 'monad',
       abi: EIGENLP_ABI,
       address: (process.env.EIGENLP_ADDRESS || '0x6eD5322c6bC349b4dfca458814E8B6c0bf0558EB') as `0x${string}`,
-      startBlock: Number(process.env.EIGENLP_START_BLOCK || 0),
+      startBlock: Number(process.env.EIGENLP_START_BLOCK || 55_529_585),
     },
   },
 });
