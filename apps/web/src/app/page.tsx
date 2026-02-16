@@ -574,7 +574,7 @@ export default function LandingPage() {
                 One Protocol. All Markets.<br /><em className="italic text-[#A78BFA]">Maximum Volume.</em>
               </h2>
               <p className="text-[15px] text-[#878285] leading-relaxed max-w-[500px] mx-auto">
-                Deploy autonomous agents that generate volume, manage spreads, and capture LP fees on any nad.fun token.
+                Deploy autonomous agents that generate volume, manage spreads, and capture LP fees on any token on Monad.
               </p>
             </div>
           </Reveal>
@@ -759,11 +759,10 @@ export default function LandingPage() {
                           <div className="absolute -inset-3 rounded-[24px] blur-2xl pointer-events-none" style={{ background: `rgba(${cls.accentRgb}, 0.18)` }} />
                         )}
                         <div
-                          className={`relative p-4 md:p-5 h-full cursor-pointer transition-all duration-200 hover:-translate-y-1 overflow-hidden rounded-xl ${
-                            cls.popular
+                          className={`relative p-4 md:p-5 h-full cursor-pointer transition-all duration-200 hover:-translate-y-1 overflow-hidden rounded-xl ${cls.popular
                               ? 'ring-1 ring-white/30 hover:ring-white/40 hover:shadow-[0_8px_40px_rgba(123,63,228,0.3)]'
                               : 'hover:shadow-[0_8px_30px_rgba(123,63,228,0.12)]'
-                          }`}
+                            }`}
                           style={{
                             background: cls.popular
                               ? 'rgba(255,255,255,0.08)'
