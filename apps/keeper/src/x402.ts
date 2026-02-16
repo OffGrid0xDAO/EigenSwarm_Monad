@@ -16,7 +16,7 @@ if (!X402_PAY_TO_RAW) {
 }
 const X402_PAY_TO: string = X402_PAY_TO_RAW;
 const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const USDC_MONAD = '0x754704Bc059F8C67012fEd69BC8a327a5aafb603';
+const USDC_MONAD = '0x534b2f3A21130d7a60830c2Df862319e593943A3';
 
 // ── Facilitator Setup ─────────────────────────────────────────────────
 // If CDP API keys are present → use Coinbase CDP facilitator (production, fee-free on Base)
@@ -86,10 +86,21 @@ export interface PaymentRequirements {
   extra: Record<string, unknown>;
 }
 
+/** v2 Accepts item — only fields defined in the x402 v2 spec */
+export interface AcceptsItem {
+  scheme: 'exact';
+  network: string;
+  amount: string;
+  payTo: string;
+  maxTimeoutSeconds: number;
+  asset: string;
+  extra: Record<string, unknown>;
+}
+
 /** v2 402 response body */
 export interface X402PaymentRequired {
   x402Version: 2;
-  accepts: PaymentRequirements[];
+  accepts: AcceptsItem[];
   resource: { url: string; description: string; mimeType: string };
   extensions?: Record<string, unknown>;
 }
@@ -110,7 +121,7 @@ export function buildPaymentRequirements(pkg: VolumePackage, endpoint: string, n
     maxTimeoutSeconds: 300,
     asset: network === 'monad' ? USDC_MONAD : USDC_BASE,
     extra: {
-      name: 'USD Coin',
+      name: 'USDC',
       version: '2',
     },
   };

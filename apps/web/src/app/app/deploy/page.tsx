@@ -73,14 +73,12 @@ export default function DeployPage() {
 
   const tokenVerified = tokenData?.valid === true;
 
-  // Redirect to eigen page after successful deployment
   const deploySuccess = isMonad ? registerEigen.isSuccess : isSuccess;
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   useEffect(() => {
-    if (deploySuccess) {
-      const timer = setTimeout(() => router.push(`/app/eigen/${eigenId}`), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [deploySuccess, eigenId, router]);
+    if (deploySuccess) setShowSuccessModal(true);
+  }, [deploySuccess]);
 
   async function handleDeploy() {
     if (!address) return;
@@ -109,7 +107,7 @@ export default function DeployPage() {
   }
 
   return (
-    <AppPageShell label="Deploy" title="Deploy Eigen" subtitle="Deploy an autonomous market making agent on an existing token.">
+    <AppPageShell label="Add Agent" title="Add Agent" subtitle="Add an autonomous market-making agent to an existing token.">
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Chain selector — top right */}
       <div className="flex items-center justify-end">
@@ -400,7 +398,7 @@ export default function DeployPage() {
 
           {isMonad && registerEigen.isSuccess && (
             <div className="rounded-xl border border-status-success/30 bg-status-success/5 p-4">
-              <p className="text-xs text-status-success">Eigen registered on Monad. Redirecting...</p>
+              <p className="text-xs text-status-success">Eigen registered on Monad.</p>
             </div>
           )}
 
@@ -423,8 +421,72 @@ export default function DeployPage() {
                 || parseFloat(ethDeposit) < classConfig.minDeposit
               }
             >
-              {(isMonad ? registerEigen.isSuccess : isSuccess) ? 'Deployed! Redirecting...' : 'Deploy Eigen'}
+              {(isMonad ? registerEigen.isSuccess : isSuccess) ? 'Deployed!' : 'Deploy Eigen'}
             </GlowButton>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowSuccessModal(false)} />
+          <div className="relative bg-bg-card border border-border-subtle rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            {/* Success icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-status-success/10 border border-status-success/20 flex items-center justify-center">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-status-success">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              </div>
+            </div>
+
+            <h3 className="text-lg font-semibold text-txt-primary text-center mb-2">
+              Eigen Deployed Successfully
+            </h3>
+            <p className="text-sm text-txt-muted text-center mb-6">
+              Your <span className="font-medium text-txt-primary">{classConfig.label}</span> eigen for <span className="font-mono text-txt-primary">${tokenData?.symbol || 'UNKNOWN'}</span> is now live.
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push(`/app/eigen/${eigenId}`)}
+                className="w-full flex items-center justify-center gap-2 bg-txt-primary text-white rounded-xl px-4 py-3 text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                </svg>
+                View Eigen Dashboard
+              </button>
+
+              {isMonad && tokenAddress && (
+                <a
+                  href={`https://nad.fun/token/${tokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-bg-elevated border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium text-txt-primary hover:border-border-hover transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                  View on nad.fun
+                </a>
+              )}
+
+              {!isMonad && tokenAddress && (
+                <a
+                  href={`https://dexscreener.com/base/${tokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-bg-elevated border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium text-txt-primary hover:border-border-hover transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                  View on DexScreener
+                </a>
+              )}
+            </div>
           </div>
         </div>
       )}

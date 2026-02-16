@@ -7,8 +7,8 @@ import { ConnectButton } from '@/components/wallet/ConnectButton';
 
 const navLinks = [
   { href: '/app', label: 'Fleet' },
-  { href: '/app/deploy', label: 'Deploy' },
-  { href: '/app/launch', label: 'Launch' },
+  { href: '/app/deploy', label: 'Add Agent' },
+  { href: '/app/launch', label: 'Launch Token' },
   { href: '/app/history', label: 'History' },
 ];
 

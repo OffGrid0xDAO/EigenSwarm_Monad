@@ -366,12 +366,12 @@ export default function LaunchPage() {
 
   return (
     <AppPageShell
-      label="Launch"
-      title="Launch Token + Deploy Eigen"
+      label="Launch Token"
+      title="Launch Token"
       subtitle={
         isMonad
-          ? 'Create a nad.fun token, optionally seed a V4 pool, and deploy a market-making agent on Monad.'
-          : 'Deploy a Clanker token, create an EigenLP pool, and deploy an agent that market-makes on your pool \u2014 100% of trading fees go to you.'
+          ? 'Create a nad.fun token, optionally seed a V4 pool, and add a market-making agent on Monad.'
+          : 'Create a Clanker token, set up an EigenLP pool, and add an agent that market-makes on your pool \u2014 100% of trading fees go to you.'
       }
     >
       <div className="max-w-5xl mx-auto space-y-8">

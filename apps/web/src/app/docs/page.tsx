@@ -411,7 +411,7 @@ export default function DocsPage() {
 
               <SectionHeading id="deploy-on-token" level={3}>Deploy on Existing Token</SectionHeading>
               <Paragraph>
-                Navigate to <strong>Deploy</strong> in the app to attach an Eigen to any existing nad.fun token on Monad. The process follows four steps:
+                Navigate to <strong>Add Agent</strong> in the app to attach an Eigen to any existing nad.fun token on Monad. The process follows four steps:
               </Paragraph>
               <ol className="list-decimal list-inside space-y-3 text-sm text-txt-secondary mb-6 pl-2">
                 <li><strong className="text-txt-primary">Select Token</strong> — Enter the token&apos;s contract address on Monad. The app verifies it&apos;s a valid ERC-20 with an active Uniswap pool.</li>
