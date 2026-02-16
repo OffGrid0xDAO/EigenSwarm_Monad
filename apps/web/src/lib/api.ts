@@ -355,6 +355,9 @@ export interface LaunchBaseTokenParams {
     liquidityPct: number;
     volumePct: number;
   };
+  website?: string;
+  twitter?: string;
+  telegram?: string;
   ownerAddress: string;
   signature: string;
   timestamp: number;

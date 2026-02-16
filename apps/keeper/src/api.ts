@@ -46,11 +46,11 @@ import {
 } from './db';
 import { resolvePool, computeV4PoolId, ZERO_ADDRESS } from './pool-resolver';
 import { getTokenPriceWithFallback } from './price-oracle';
-import { publicClient, getPublicClient, getWalletClient, getKeeperAddress } from './client';
+import { publicClient, getPublicClient, getWalletClient, getWalletClientForKey, getKeeperAddress } from './client';
 import { ERC20_ABI, EIGENVAULT_ABI, EIGENVAULT_ADDRESS, EIGENLP_ABI, EIGEN_ATOMIC_LAUNCHER_ABI, eigenIdToBytes32, getSupportedChainIds, isChainSupported, getChainConfig } from '@eigenswarm/shared';
 import { getCachedOnChainEigens, discoverEigensFromChain } from './recovery';
 import { swapUsdcToEth, swapUsdcAndFundEigen, checkTreasuryHealth, verifyEthPayment } from './treasury';
-import { createMonadToken, restartGraduationMonitor, type CreateMonadTokenParams } from './monad-trader';
+import { createMonadToken, restartGraduationMonitor, monadSell, type CreateMonadTokenParams } from './monad-trader';
 import { uploadImageToNadFun, uploadMetadataToNadFun, mineSaltFromNadFun, generatePlaceholderSvg } from './nadfun-api';
 import { createMonadV4Pool, priceToSqrtPriceX96 } from './monad-lp';
 import { deployBaseToken, buildClankerDeployTx } from './base-deployer';
@@ -4589,6 +4589,156 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       }
 
       return json(res, { success: true, results });
+    } catch (error) {
+      return json(res, { error: (error as Error).message }, 500);
+    }
+  }
+
+  // POST /api/admin/sweep-to-owner — send all keeper MON to a specific address
+  if (method === 'POST' && path === '/api/admin/sweep-to-owner') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const toAddress: string = body?.toAddress;
+      const keepDust = body?.keepDust ?? '0.5'; // Keep some for gas
+      if (!toAddress) return json(res, { error: 'toAddress required' }, 400);
+
+      const wallet = getWalletClient(143);
+      const client = getPublicClient(143);
+      const keeperAddr = getKeeperAddress();
+
+      const balance = await client.getBalance({ address: keeperAddr });
+      const keep = BigInt(Math.floor(parseFloat(keepDust) * 1e18));
+      const sendAmt = balance > keep ? balance - keep : 0n;
+
+      if (sendAmt === 0n) {
+        return json(res, { error: 'Nothing to sweep', balance: formatEther(balance) }, 400);
+      }
+
+      console.log(`[Sweep] Sending ${formatEther(sendAmt)} MON from ${keeperAddr} → ${toAddress}`);
+      const txHash = await wallet.sendTransaction({
+        account: wallet.account!,
+        chain: wallet.chain,
+        to: toAddress as `0x${string}`,
+        value: sendAmt,
+      });
+      await client.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+
+      const newBalance = await client.getBalance({ address: keeperAddr });
+      console.log(`[Sweep] Done: ${formatEther(sendAmt)} MON sent, keeper now has ${formatEther(newBalance)} MON`);
+
+      return json(res, {
+        success: true,
+        txHash,
+        amountSent: formatEther(sendAmt),
+        keeperRemaining: formatEther(newBalance),
+      });
+    } catch (error) {
+      return json(res, { error: (error as Error).message }, 500);
+    }
+  }
+
+  // POST /api/admin/nuke-eigen — sell all sub-wallet tokens + sweep MON back to master
+  if (method === 'POST' && path === '/api/admin/nuke-eigen') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const eigenId: string = body?.eigenId;
+      if (!eigenId) return json(res, { error: 'eigenId required' }, 400);
+
+      const config = getEigenConfig(eigenId);
+      if (!config) return json(res, { error: 'Eigen not found' }, 404);
+      if (config.chain_id !== 143) return json(res, { error: 'Only Monad eigens supported' }, 400);
+
+      const tokenAddress = config.token_address as `0x${string}`;
+      const wallets = getWalletsForEigen(eigenId, config.wallet_count || 5);
+      const client = getPublicClient(143);
+      const masterWallet = getWalletClient(143);
+      const keeperAddr = getKeeperAddress();
+
+      console.log(`[Nuke] Starting nuke for ${eigenId} (${config.token_symbol}), ${wallets.length} wallets`);
+
+      // Suspend the eigen first
+      updateEigenConfigStatus(eigenId, 'suspended', 'nuked');
+
+      const results: { wallet: string; tokenBalance: string; sold: boolean; monSwept: string; txHash?: string; error?: string }[] = [];
+
+      for (const w of wallets) {
+        try {
+          // Check token balance
+          const tokenBal = await client.readContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            functionName: 'balanceOf',
+            args: [w.address],
+          }) as bigint;
+
+          let soldOk = false;
+          let sellTxHash = '';
+
+          // Sell tokens on bonding curve if any
+          if (tokenBal > 0n) {
+            try {
+              const { txHash, monReceived } = await monadSell(tokenAddress, tokenBal, w);
+              soldOk = true;
+              sellTxHash = txHash;
+              console.log(`[Nuke] Sold ${formatEther(tokenBal)} tokens from ${w.address}: +${formatEther(monReceived)} MON tx=${txHash}`);
+            } catch (sellErr) {
+              console.error(`[Nuke] Sell failed for ${w.address}:`, (sellErr as Error).message);
+            }
+          }
+
+          // Sweep remaining MON back to master wallet
+          const monBal = await client.getBalance({ address: w.address });
+          let monSwept = 0n;
+          if (monBal > parseEther('0.01')) {
+            try {
+              const sweepAmt = monBal - parseEther('0.005'); // Keep dust for gas
+              const walletClient = getWalletClientForKey(w.privateKey, 143);
+              const sweepTx = await walletClient.sendTransaction({
+                account: walletClient.account!,
+                chain: walletClient.chain,
+                to: keeperAddr,
+                value: sweepAmt,
+              });
+              await client.waitForTransactionReceipt({ hash: sweepTx, timeout: 60_000 });
+              monSwept = sweepAmt;
+              console.log(`[Nuke] Swept ${formatEther(sweepAmt)} MON from ${w.address} → master`);
+            } catch (sweepErr) {
+              console.error(`[Nuke] Sweep failed for ${w.address}:`, (sweepErr as Error).message);
+            }
+          }
+
+          results.push({
+            wallet: w.address,
+            tokenBalance: formatEther(tokenBal),
+            sold: soldOk,
+            monSwept: formatEther(monSwept),
+            txHash: sellTxHash || undefined,
+          });
+        } catch (err) {
+          results.push({
+            wallet: w.address,
+            tokenBalance: '?',
+            sold: false,
+            monSwept: '0',
+            error: (err as Error).message,
+          });
+        }
+      }
+
+      const totalSold = results.filter(r => r.sold).length;
+      const totalSwept = results.reduce((sum, r) => sum + parseFloat(r.monSwept), 0);
+      console.log(`[Nuke] Done: ${totalSold}/${wallets.length} wallets sold, ${totalSwept.toFixed(2)} MON swept`);
+
+      return json(res, {
+        success: true,
+        eigenId,
+        tokenSymbol: config.token_symbol,
+        walletCount: wallets.length,
+        totalSold,
+        totalMonSwept: totalSwept.toFixed(4),
+        results,
+        note: 'LP removal must be done by the eigen owner wallet — call removeLiquidity on EigenLP contract directly',
+      });
     } catch (error) {
       return json(res, { error: (error as Error).message }, 500);
     }

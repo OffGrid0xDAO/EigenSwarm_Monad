@@ -206,6 +206,9 @@ export default function LaunchPage() {
           liquidityPct: monadLpPct,
           volumePct: 0,
         },
+        website: website || undefined,
+        twitter: twitter || undefined,
+        telegram: telegram || undefined,
         ownerAddress: address,
         ...sig,
       });
