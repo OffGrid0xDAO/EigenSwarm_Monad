@@ -30,7 +30,7 @@ export const EIGENLP_ABI = [
   {
     type: 'function',
     name: 'collectFees',
-    inputs: [{ name: 'eigenId', type: 'bytes32' }],
+    inputs: [{ name: 'eigenId', type: 'bytes32' }, { name: 'amount0Min', type: 'uint128' }, { name: 'amount1Min', type: 'uint128' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },

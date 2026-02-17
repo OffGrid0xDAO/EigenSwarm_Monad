@@ -47,7 +47,7 @@ export function useCollectFees() {
       address: LP_ADDRESS,
       abi: EIGENLP_ABI,
       functionName: 'collectFees',
-      args: [eigenIdToBytes32(eigenId)],
+      args: [eigenIdToBytes32(eigenId), BigInt(0), BigInt(0)],
     });
   }
 
