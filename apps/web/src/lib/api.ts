@@ -48,6 +48,8 @@ export interface ApiEigen {
     currentBalance: string;
     minimumBalance: string;
   } | null;
+  // V4 LP unclaimed fees (on-chain)
+  v4LpFees?: { unclaimedMon: string; unclaimedToken: string } | null;
   // ERC-8004 identity
   agent8004Id?: string | null;
   agent8004ChainId?: number | null;

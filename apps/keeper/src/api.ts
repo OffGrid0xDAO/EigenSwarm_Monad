@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
-import { formatEther, parseEther, keccak256, toHex, verifyMessage } from 'viem';
+import { formatEther, parseEther, keccak256, toHex, verifyMessage, type Address } from 'viem';
 import crypto from 'crypto';
 import {
   getDb,
@@ -48,7 +48,7 @@ import {
 import { resolvePool, computeV4PoolId, ZERO_ADDRESS } from './pool-resolver';
 import { getTokenPriceWithFallback } from './price-oracle';
 import { publicClient, getPublicClient, getWalletClient, getWalletClientForKey, getKeeperAddress } from './client';
-import { ERC20_ABI, EIGENVAULT_ABI, EIGENVAULT_ADDRESS, EIGENLP_ABI, EIGEN_ATOMIC_LAUNCHER_ABI, eigenIdToBytes32, getSupportedChainIds, isChainSupported, getChainConfig } from '@eigenswarm/shared';
+import { ERC20_ABI, EIGENVAULT_ABI, EIGENVAULT_ADDRESS, EIGENLP_ABI, EIGEN_ATOMIC_LAUNCHER_ABI, eigenIdToBytes32, getSupportedChainIds, isChainSupported, getChainConfig, UNISWAP_V4_STATE_VIEW } from '@eigenswarm/shared';
 import { getCachedOnChainEigens, discoverEigensFromChain } from './recovery';
 import { swapUsdcToEth, swapUsdcAndFundEigen, checkTreasuryHealth, verifyEthPayment } from './treasury';
 import { createMonadToken, restartGraduationMonitor, monadSell, type CreateMonadTokenParams } from './monad-trader';
@@ -68,6 +68,66 @@ import {
   GAS_BUDGET_PER_WALLET,
   type AgentClass,
 } from '@eigenswarm/shared';
+const V4_STATE_VIEW_ABI = [
+  { type: 'function', name: 'getFeeGrowthGlobals', inputs: [{ name: 'poolId', type: 'bytes32' }], outputs: [{ name: 'feeGrowthGlobal0', type: 'uint256' }, { name: 'feeGrowthGlobal1', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'getPositionInfo', inputs: [{ name: 'poolId', type: 'bytes32' }, { name: 'owner', type: 'address' }, { name: 'tickLower', type: 'int24' }, { name: 'tickUpper', type: 'int24' }, { name: 'salt', type: 'bytes32' }], outputs: [{ name: 'liquidity', type: 'uint128' }, { name: 'feeGrowthInside0LastX128', type: 'uint256' }, { name: 'feeGrowthInside1LastX128', type: 'uint256' }], stateMutability: 'view' },
+] as const;
+
+const EIGENLP_POSITION_ABI = [
+  { type: 'function', name: 'getPosition', inputs: [{ name: 'eigenId', type: 'bytes32' }], outputs: [{ name: 'tokenId', type: 'uint256' }, { name: 'poolId', type: 'bytes32' }, { name: 'token', type: 'address' }, { name: 'eigenOwner', type: 'address' }, { name: 'fee', type: 'uint24' }, { name: 'tickSpacing', type: 'int24' }], stateMutability: 'view' },
+] as const;
+
+const POSITION_MANAGER_ADDRESS = '0x5b7ec4a94ff9bedb700fb82ab09d5846972f4016' as Address;
+const TICK_LOWER = -887238;
+const TICK_UPPER = 887238;
+const Q128 = 2n ** 128n;
+
+/**
+ * Query V4 LP unclaimed fees for an eigen's LP position on-chain.
+ * Returns { unclaimedMon, unclaimedToken } in wei strings, or null if no LP.
+ */
+async function getV4LpUnclaimedFees(eigenId: string): Promise<{ unclaimedMon: string; unclaimedToken: string } | null> {
+  try {
+    const eigenIdHash = keccak256(toHex(eigenId));
+    const pos = await publicClient.readContract({
+      address: EIGENLP_ADDRESS as Address,
+      abi: EIGENLP_POSITION_ABI,
+      functionName: 'getPosition',
+      args: [eigenIdHash],
+    });
+    const tokenId = pos[0];
+    const poolId = pos[1];
+    if (tokenId === 0n) return null;
+
+    const salt = ('0x' + tokenId.toString(16).padStart(64, '0')) as `0x${string}`;
+    const [globals, posInfo] = await Promise.all([
+      publicClient.readContract({
+        address: UNISWAP_V4_STATE_VIEW as Address,
+        abi: V4_STATE_VIEW_ABI,
+        functionName: 'getFeeGrowthGlobals',
+        args: [poolId],
+      }),
+      publicClient.readContract({
+        address: UNISWAP_V4_STATE_VIEW as Address,
+        abi: V4_STATE_VIEW_ABI,
+        functionName: 'getPositionInfo',
+        args: [poolId, POSITION_MANAGER_ADDRESS, TICK_LOWER, TICK_UPPER, salt],
+      }),
+    ]);
+
+    const liquidity = posInfo[0];
+    if (liquidity === 0n) return null;
+
+    const feeGrowthDelta0 = globals[0] - posInfo[1];
+    const feeGrowthDelta1 = globals[1] - posInfo[2];
+    const unclaimedMon = (feeGrowthDelta0 * liquidity) / Q128;
+    const unclaimedToken = (feeGrowthDelta1 * liquidity) / Q128;
+
+    return { unclaimedMon: unclaimedMon.toString(), unclaimedToken: unclaimedToken.toString() };
+  } catch {
+    return null;
+  }
+}
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
 
@@ -696,6 +756,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
           totalWithdrawn: ponder?.totalWithdrawn || '0',
           totalTraded: ponder?.totalTraded || '0',
           totalFees: ponder?.totalFees || '0',
+          feeOwed: ponder?.feeOwed || '0',
           tradeCount: ponder?.tradeCount || stats.totalBuys + stats.totalSells,
           createdAt: ponder?.createdAt || 0,
           config: config,
@@ -739,6 +800,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             totalWithdrawn: pe.totalWithdrawn,
             totalTraded: pe.totalTraded,
             totalFees: pe.totalFees,
+            feeOwed: pe.feeOwed || '0',
             tradeCount: pe.tradeCount,
             createdAt: pe.createdAt,
             config: null,
@@ -819,6 +881,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         totalVolume += BigInt(t.eth_amount);
       }
 
+      // Query V4 LP unclaimed fees on-chain (non-blocking, 2s timeout)
+      let v4LpFees: { unclaimedMon: string; unclaimedToken: string } | null = null;
+      try {
+        v4LpFees = await Promise.race([
+          getV4LpUnclaimedFees(eigenId),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+        ]);
+      } catch { }
+
       return json(res, {
         data: {
           ...ponderEigen,
@@ -835,6 +906,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
             totalCostEth: totalCost,
             totalGasCost: stats.totalGasCost,
           },
+          v4LpFees,
           gasWarning,
           lowBalance,
           // ERC-8004 identity

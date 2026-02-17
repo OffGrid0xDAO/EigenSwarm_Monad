@@ -57,7 +57,7 @@ export function mapApiEigenToEigen(api: ApiEigen, pnl?: ApiPnlSummary | null): E
     tradesExecuted: api.tradeCount || 0,
     realizedPnl: position?.realizedPnlEth ?? api.pnl?.totalRealizedPnl ?? 0,
     unrealizedPnl: position?.unrealizedPnlEth ?? 0,
-    lpFeesEarned: safeParseEth(api.totalFees) + safeParseEth(api.feeOwed),
+    lpFeesEarned: safeParseEth(api.totalFees) + safeParseEth(api.feeOwed) + safeParseEth(api.v4LpFees?.unclaimedMon),
     lpFeesClaimed: safeParseEth(api.totalFees),
     protocolFeeAccrued: safeParseEth(api.totalFees),
     totalGasSpent: (api.pnl?.totalGasCost ?? 0) / 1e18,
