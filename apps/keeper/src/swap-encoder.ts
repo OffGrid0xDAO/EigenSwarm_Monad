@@ -471,10 +471,10 @@ function encodeV4NativeEthSell(params: SwapParams): SwapRoute {
 
   const actionParams: `0x${string}`[] = [
     encodeExactInputParams(inputCurrency, poolKey, zeroForOne, params.amount, 0n),
-    // SETTLE: pull tokens from caller via Permit2
+    // SETTLE: pull tokens from caller via Permit2 (use exact amount, not 0)
     encodeAbiParameters(
       parseAbiParameters('address currency, uint256 maxAmount, bool payerIsUser'),
-      [inputCurrency, 0n, true],
+      [inputCurrency, params.amount, true],
     ),
     // TAKE: withdraw native ETH directly to recipient (no UNWRAP_WETH needed)
     encodeAbiParameters(

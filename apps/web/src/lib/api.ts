@@ -116,6 +116,12 @@ export interface ApiTrade {
   created_at: string;
 }
 
+export interface ApiArbStats {
+  totalArbs: number;
+  totalArbProfit: number;
+  arbWinRate: number;
+}
+
 export interface ApiPnlSummary {
   eigenId: string;
   tokenAddress: string;
@@ -135,6 +141,7 @@ export interface ApiPnlSummary {
     tradeCount: number;
   } | null;
   stats: ApiPnlStats;
+  arb?: ApiArbStats;
 }
 
 export interface ApiPriceSnapshot {

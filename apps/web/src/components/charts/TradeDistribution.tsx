@@ -22,6 +22,7 @@ const COLORS: Record<string, string> = {
   liquidation: '#DC2626',
   fee_claim: '#FBBF24',
   rebalance: '#C4B5FD',
+  arbitrage: '#E4A83F',
 };
 
 const LABELS: Record<string, string> = {
@@ -32,6 +33,7 @@ const LABELS: Record<string, string> = {
   liquidation: 'Liquidation',
   fee_claim: 'Fee Claim',
   rebalance: 'Rebalance',
+  arbitrage: 'Arbitrage',
 };
 
 export function TradeDistribution({ trades, className }: TradeDistributionProps) {

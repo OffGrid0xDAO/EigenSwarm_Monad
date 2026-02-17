@@ -34,6 +34,7 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
 
   let volume = 0;
   let withdrawable = ethDeposited;
+  let arbProfit = 0;
 
   const data = sortedTrades.map((trade) => {
     const ethAmt = parseFloat(trade.eth_amount) / 1e18;
@@ -57,6 +58,10 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
       case 'fee_claim':
         withdrawable += ethAmt - gasCost;
         break;
+      case 'arbitrage':
+        arbProfit += trade.pnl_realized;
+        withdrawable += trade.pnl_realized - gasCost;
+        break;
     }
 
     return {
@@ -68,8 +73,11 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
       }),
       volume: parseFloat(volume.toFixed(6)),
       withdrawable: parseFloat(withdrawable.toFixed(6)),
+      arbProfit: parseFloat(arbProfit.toFixed(6)),
     };
   });
+
+  const hasArbTrades = sortedTrades.some((t) => t.type === 'arbitrage');
 
   return (
     <div className={className || 'h-[200px]'}>
@@ -83,6 +91,10 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
             <linearGradient id="withdrawGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#4A9D7E" stopOpacity={0.2} />
               <stop offset="95%" stopColor="#4A9D7E" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="arbGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#E4A83F" stopOpacity={0.2} />
+              <stop offset="95%" stopColor="#E4A83F" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
@@ -109,7 +121,7 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
             labelStyle={{ color: '#706F84' }}
             formatter={(value: number, name: string) => [
               `${value.toFixed(4)} MON`,
-              name === 'volume' ? 'Volume' : 'Withdrawable',
+              name === 'volume' ? 'Volume' : name === 'arbProfit' ? 'Arb Profit' : 'Withdrawable',
             ]}
           />
           <Legend
@@ -148,6 +160,25 @@ export function PnlChart({ trades, ethDeposited, className }: PnlChartProps) {
             strokeWidth={2}
             dot={false}
           />
+          {hasArbTrades && (
+            <>
+              <Area
+                type="monotone"
+                dataKey="arbProfit"
+                fill="url(#arbGradient)"
+                stroke="none"
+                legendType="none"
+              />
+              <Line
+                type="monotone"
+                dataKey="arbProfit"
+                name="Arb Profit"
+                stroke="#E4A83F"
+                strokeWidth={2}
+                dot={false}
+              />
+            </>
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

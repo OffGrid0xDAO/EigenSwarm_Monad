@@ -4,7 +4,7 @@ export type AgentClass = 'sentinel' | 'operator' | 'architect' | 'sovereign';
 
 export type EigenStatus = 'active' | 'suspended' | 'terminated' | 'liquidating' | 'liquidated' | 'pending_lp' | 'pending_funding' | 'closed';
 
-export type TradeType = 'buy' | 'sell' | 'rebalance' | 'profit_take' | 'fee_claim' | 'liquidation' | 'reactive_sell';
+export type TradeType = 'buy' | 'sell' | 'rebalance' | 'profit_take' | 'fee_claim' | 'liquidation' | 'reactive_sell' | 'arbitrage';
 
 export type TransactionType = 'deposit' | 'withdraw' | 'terminate';
 

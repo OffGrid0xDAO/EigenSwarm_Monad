@@ -331,7 +331,7 @@ const PERMIT2_ABI = [
  * Build a V4 PoolInfo from the eigen's DB config.
  * Returns null if no V4 pool has been created yet (lp_pool_id not set).
  */
-function buildV4PoolFromConfig(tokenAddress: Address, config: EigenConfig): PoolInfo | null {
+export function buildV4PoolFromConfig(tokenAddress: Address, config: EigenConfig): PoolInfo | null {
   const hasPool = config.lp_pool_id && !/^0x0+$/.test(config.lp_pool_id);
   if (!hasPool) return null;
 
@@ -352,7 +352,7 @@ function buildV4PoolFromConfig(tokenAddress: Address, config: EigenConfig): Pool
  * V4 Buy: MON → Token via Universal Router (native ETH pool).
  * Bypasses nad.fun SDK, routes directly through V4.
  */
-async function monadV4Buy(
+export async function monadV4Buy(
   tokenAddress: Address,
   monAmount: bigint,
   wallet: DerivedWallet,
@@ -406,7 +406,7 @@ async function monadV4Buy(
  * V4 Sell: Token → MON via Universal Router (native ETH pool).
  * Handles Permit2 approvals (ERC20 → Permit2 → Universal Router).
  */
-async function monadV4Sell(
+export async function monadV4Sell(
   tokenAddress: Address,
   tokenAmount: bigint,
   wallet: DerivedWallet,

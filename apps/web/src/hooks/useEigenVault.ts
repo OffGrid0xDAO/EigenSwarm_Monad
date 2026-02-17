@@ -147,6 +147,45 @@ export function useEigenInfo(eigenId: string) {
   };
 }
 
+// ── Collect Vault Fees ─────────────────────────────────────────────────────
+
+export function useCollectVaultFees() {
+  const { data: hash, writeContract, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  function collectFee(eigenId: string) {
+    writeContract({
+      address: VAULT_ADDRESS,
+      abi: VAULT_ABI,
+      functionName: 'collectFee',
+      args: [eigenIdToBytes32(eigenId)],
+    });
+  }
+
+  return { collectFee, hash, isPending, isConfirming, isSuccess, error };
+}
+
+// ── Read: Fee Owed ─────────────────────────────────────────────────────────
+
+export function useFeeOwed(eigenId: string) {
+  const bytes32Id = eigenId ? eigenIdToBytes32(eigenId) : ('0x' + '0'.repeat(64)) as `0x${string}`;
+
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: VAULT_ADDRESS,
+    abi: VAULT_ABI,
+    functionName: 'feeOwed',
+    args: [bytes32Id],
+    query: { enabled: !!eigenId, refetchInterval: 30_000 },
+  });
+
+  return {
+    feeOwed: data as bigint | undefined,
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
 // ── Exported constants ──────────────────────────────────────────────────────
 
 export { VAULT_ADDRESS };

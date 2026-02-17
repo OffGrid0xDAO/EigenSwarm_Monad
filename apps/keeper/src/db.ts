@@ -958,6 +958,28 @@ export function deleteEigenConfig(eigenId: string): void {
   db.prepare('DELETE FROM eigen_configs WHERE eigen_id = ?').run(eigenId);
 }
 
+// ── Arb Stats ─────────────────────────────────────────────────────────
+
+export interface ArbStats {
+  totalArbs: number;
+  totalArbProfit: number;
+  arbWinCount: number;
+  arbLossCount: number;
+}
+
+export function getArbStats(eigenId: string): ArbStats {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT
+      COALESCE(COUNT(*), 0) as totalArbs,
+      COALESCE(SUM(pnl_realized), 0) as totalArbProfit,
+      COALESCE(SUM(CASE WHEN pnl_realized > 0 THEN 1 ELSE 0 END), 0) as arbWinCount,
+      COALESCE(SUM(CASE WHEN pnl_realized < 0 THEN 1 ELSE 0 END), 0) as arbLossCount
+    FROM trades WHERE type = 'arbitrage' AND eigen_id = ?
+  `).get(eigenId) as ArbStats;
+  return row;
+}
+
 export function getTradeVolumeByEigenIds(eigenIds: string[]): number {
   if (eigenIds.length === 0) return 0;
   const db = getDb();

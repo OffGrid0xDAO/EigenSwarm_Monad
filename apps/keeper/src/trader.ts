@@ -15,6 +15,7 @@ import { ERC20_ABI } from '@eigenswarm/shared';
 import { evaluateTrade, type AIConfig } from './ai-evaluator';
 import { buildMarketContext } from './ai-context';
 import { executeMonadTradeCycle } from './monad-trader';
+import { executeArbCycle } from './arbitrage';
 import { logTrade, trackSpend, alertKeeperGas, alertConsecutiveFailures } from './alerting';
 import { resetAllNonces } from './nonce-manager';
 import { sortByPriority, GasBudgetTracker } from './gas-budget';
@@ -1070,6 +1071,14 @@ export async function executeTradeCycle(): Promise<void> {
     await executeMonadTradeCycle(aiConfig);
   } catch (error) {
     console.error(`[Trader] Monad trade cycle error:`, (error as Error).message);
+  }
+
+  // ── Arb Cycle (nad.fun ↔ V4 atomic arbitrage) ────────────────────────
+  // Runs after trade cycle to avoid nonce contention (sequential, not parallel)
+  try {
+    await executeArbCycle();
+  } catch (error) {
+    console.error(`[Trader] Arb cycle error:`, (error as Error).message);
   }
 }
 

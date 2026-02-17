@@ -826,7 +826,7 @@ interface Trade {
                 ['Permit2', '0x000000000022D473030F116dDEE9F6B43aC78BA3'],
               ]} />
 
-              <p className="text-label uppercase text-txt-muted tracking-widest mt-6 mb-3">Clanker Factory Contracts (Base-only)</p>
+              <p className="text-label uppercase text-txt-muted tracking-widest mt-6 mb-3">Token Factory Contracts (Base-only)</p>
               <SpecTable rows={[
                 ['V4 (Current)', '0xE85A59c628F7d27878ACeB4bf3b35733630083a9'],
                 ['V3', '0x2A787b2362021cC3eEa3C24C4748a6cD5B687382'],

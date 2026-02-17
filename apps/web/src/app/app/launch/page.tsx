@@ -374,7 +374,7 @@ export default function LaunchPage() {
       subtitle={
         isMonad
           ? 'Create a nad.fun token, optionally seed a V4 pool, and add a market-making agent on Monad.'
-          : 'Create a Clanker token, set up an EigenLP pool, and add an agent that market-makes on your pool \u2014 100% of trading fees go to you.'
+          : 'Create a token via nad.fun, set up an EigenLP pool, and add a market-making agent \u2014 100% of trading fees go to you.'
       }
     >
       <div className="max-w-5xl mx-auto space-y-8">
@@ -726,24 +726,13 @@ export default function LaunchPage() {
                           <span className="font-mono font-medium text-status-success">100% yours</span>
                         </div>
                         <p className="text-caption text-txt-disabled">
-                          Your agent market-makes on its own EigenLP pool. No fees go to Clanker, no fees go to third-party deployers. You keep everything.
+                          Your agent market-makes on its own EigenLP pool. No fees go to third-party deployers or protocols. You keep everything.
                         </p>
 
                         <div className="pt-2 border-t border-border-subtle space-y-1.5">
-                          <span className="text-caption text-txt-disabled">Clanker Pool (not used by agent)</span>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-txt-disabled">
-                              <span>40% to deployer frontend (Bankrbot, Warpcast, etc.)</span>
-                            </div>
-                            <div className="flex justify-between text-xs text-txt-disabled">
-                              <span>40% to creator</span>
-                            </div>
-                            <div className="flex justify-between text-xs text-txt-disabled">
-                              <span>20% to Clanker protocol</span>
-                            </div>
-                          </div>
+                          <span className="text-caption text-txt-disabled">nad.fun Bonding Curve</span>
                           <p className="text-caption text-txt-disabled">
-                            Your agent avoids the Clanker pool entirely &mdash; no 60% fee leakage to Clanker and third-party frontends.
+                            Your token launches on nad.fun&apos;s bonding curve for initial price discovery. Once graduated, all trading flows through your EigenLP V4 pool where you capture 100% of fees.
                           </p>
                         </div>
                       </div>

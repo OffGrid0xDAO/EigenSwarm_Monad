@@ -45,7 +45,7 @@ import {
   ERC8004_IDENTITY_REGISTRY,
   type Eigen,
 } from '@eigenswarm/shared';
-import { useSuspend, useResume, useTerminate, useWithdraw, useDeposit } from '@/hooks/useEigenVault';
+import { useSuspend, useResume, useTerminate, useWithdraw, useDeposit, useCollectVaultFees, useFeeOwed } from '@/hooks/useEigenVault';
 import { useLPPosition, useCollectFees, useRemoveLiquidity, useCompoundFees, useSeedPoolConcentrated } from '@/hooks/useEigenLP';
 import { CONCENTRATION_PRESETS, type ConcentrationPreset, alignTick, TICK_SPACING } from '@/lib/tickMath';
 import { AppPageShell } from '@/components/layout/AppPageShell';
@@ -98,6 +98,8 @@ export default function EigenDetailPage() {
   const depositHook = useDeposit();
   const lpPosition = useLPPosition(id || '');
   const collectFeesHook = useCollectFees();
+  const collectVaultFeesHook = useCollectVaultFees();
+  const { feeOwed: onChainFeeOwed, refetch: refetchFeeOwed } = useFeeOwed(id || '');
   const compoundFeesHook = useCompoundFees();
   const removeLiquidityHook = useRemoveLiquidity();
   const seedPoolConcentratedHook = useSeedPoolConcentrated();
@@ -112,7 +114,7 @@ export default function EigenDetailPage() {
   const [lpConcentration, setLpConcentration] = useState<ConcentrationPreset>('wide');
 
   // Get the active tx (whichever action was triggered last)
-  const activeTx = [suspendHook, resumeHook, terminateHook, withdrawHook, depositHook, collectFeesHook, compoundFeesHook, removeLiquidityHook, seedPoolConcentratedHook].find(
+  const activeTx = [suspendHook, resumeHook, terminateHook, withdrawHook, depositHook, collectFeesHook, collectVaultFeesHook, compoundFeesHook, removeLiquidityHook, seedPoolConcentratedHook].find(
     (h) => h.isPending || h.isConfirming || h.isSuccess || h.error
   );
 
@@ -437,6 +439,13 @@ export default function EigenDetailPage() {
   const costPerVolume = eigen.volumeGenerated > 0 ? (eigen.totalGasSpent / eigen.volumeGenerated) * 100 : 0;
   const netPnl = eigen.realizedPnl + eigen.unrealizedPnl + eigen.lpFeesEarned - eigen.totalGasSpent;
   const netRoi = eigen.ethDeposited > 0 ? (netPnl / eigen.ethDeposited) * 100 : 0;
+
+  // Arb stats derived from rawTrades
+  const arbTrades = (rawTrades || []).filter((t) => t.type === 'arbitrage');
+  const arbProfitTotal = arbTrades.reduce((sum, t) => sum + t.pnl_realized, 0);
+  const arbCount = arbTrades.length;
+  const arbWins = arbTrades.filter((t) => t.pnl_realized > 0).length;
+  const arbWinRate = arbCount > 0 ? (arbWins / arbCount) * 100 : 0;
   const priceImpact = eigen.entryPrice > 0 ? ((eigen.currentPrice - eigen.entryPrice) / eigen.entryPrice) * 100 : 0;
   const tradesPerDay = eigen.tradesExecuted / daysActive;
 
@@ -934,11 +943,13 @@ export default function EigenDetailPage() {
                   trades.map((trade, i) => {
                     const isBuy = trade.type === 'buy' || trade.type === 'profit_take';
                     const isSell = trade.type === 'sell' || trade.type === 'liquidation' || trade.type === 'reactive_sell';
-                    const sideColor = isBuy ? 'text-[#6DB89B]' : isSell ? 'text-[#C76E6E]' : 'text-white/30';
+                    const isArb = trade.type === 'arbitrage';
+                    const sideColor = isArb ? 'text-[#E4A83F]' : isBuy ? 'text-[#6DB89B]' : isSell ? 'text-[#C76E6E]' : 'text-white/30';
                     const labels: Record<string, string> = {
                       buy: 'BUY', sell: 'SELL', rebalance: 'RBL',
                       profit_take: 'TAKE', liquidation: 'LIQ',
                       fee_claim: 'FEE', reactive_sell: 'R.SL',
+                      arbitrage: 'ARB',
                     };
                     return (
                       <div
@@ -1025,6 +1036,9 @@ export default function EigenDetailPage() {
                       { label: 'Gas Efficiency', value: `${costPerVolume.toFixed(3)}%`, suffix: 'cost/vol' },
                       { label: 'LP Fees Earned', value: formatEth(eigen.lpFeesEarned), suffix: 'MON' },
                       { label: 'Net P&L', value: `${netPnl > 0 ? '+' : ''}${formatEth(netPnl)}`, suffix: 'MON', pnl: netPnl },
+                      ...(arbCount > 0 ? [
+                        { label: 'Arb Profit', value: `${arbProfitTotal > 0 ? '+' : ''}${formatEth(arbProfitTotal)}`, suffix: `MON (${arbCount} arbs, ${arbWinRate.toFixed(0)}% win)`, pnl: arbProfitTotal },
+                      ] : []),
                       { label: 'Remaining', value: formatEth(eigen.ethBalance), suffix: 'MON' },
                     ].map((row, i) => (
                       <div
@@ -1232,6 +1246,41 @@ export default function EigenDetailPage() {
                             <p className="text-[8px] text-txt-disabled">MON</p>
                           </div>
                         </div>
+
+                        {/* Claim Fees button */}
+                        {unclaimedFees > 0 && connectedAddress && (
+                          <div className="mt-2">
+                            <button
+                              onClick={() => {
+                                if (eigen?.id) {
+                                  collectVaultFeesHook.collectFee(eigen.id);
+                                }
+                              }}
+                              disabled={collectVaultFeesHook.isPending || collectVaultFeesHook.isConfirming}
+                              className={`w-full py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                                collectVaultFeesHook.isPending || collectVaultFeesHook.isConfirming
+                                  ? 'bg-[#E8E6E0] text-txt-disabled cursor-wait'
+                                  : 'bg-[#7B3FE4]/10 text-[#7B3FE4] hover:bg-[#7B3FE4]/20'
+                              }`}
+                            >
+                              {collectVaultFeesHook.isPending
+                                ? 'Confirm in wallet...'
+                                : collectVaultFeesHook.isConfirming
+                                  ? 'Claiming...'
+                                  : `Claim ${formatEth(unclaimedFees)} MON`}
+                            </button>
+                            {collectVaultFeesHook.isSuccess && (
+                              <p className="text-[9px] text-status-success mt-1 text-center">Fees claimed successfully</p>
+                            )}
+                            {collectVaultFeesHook.error && (
+                              <p className="text-[9px] text-red-500 mt-1 text-center">
+                                {collectVaultFeesHook.error.message?.includes('onlyOwner')
+                                  ? 'Only the vault owner can claim fees'
+                                  : 'Claim failed'}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

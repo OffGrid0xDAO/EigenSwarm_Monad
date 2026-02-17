@@ -30,6 +30,7 @@ import {
   updateAgent8004Id,
   insertProtocolFee,
   deleteEigenConfig,
+  getArbStats,
 } from './db';
 import { isErc8004Enabled, registerAgent, buildAgentCard, resolveAgent8004Owner } from './erc8004';
 import { fetchAllEigens, fetchEigen, fetchRecentTrades, checkPonderHealth, type PonderEigen } from './ponder';
@@ -877,12 +878,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000));
     const summary = await Promise.race([pnlWork().catch(() => null), timeout]);
 
+    const arbStats = getArbStats(eigenId);
+    const arbWinRate = arbStats.totalArbs > 0
+      ? Math.round((arbStats.arbWinCount / arbStats.totalArbs) * 1000) / 10
+      : 0;
+
     return json(res, {
       data: {
         eigenId,
         tokenAddress: config.token_address,
         position: summary,
         stats,
+        arb: {
+          totalArbs: arbStats.totalArbs,
+          totalArbProfit: arbStats.totalArbProfit,
+          arbWinRate,
+        },
       },
     });
   }
