@@ -69,6 +69,8 @@ import {
   type AgentClass,
 } from '@eigenswarm/shared';
 const V4_STATE_VIEW_ABI = [
+  { type: 'function', name: 'getSlot0', inputs: [{ name: 'poolId', type: 'bytes32' }], outputs: [{ name: 'sqrtPriceX96', type: 'uint160' }, { name: 'tick', type: 'int24' }, { name: 'protocolFee', type: 'uint24' }, { name: 'lpFee', type: 'uint24' }], stateMutability: 'view' },
+  { type: 'function', name: 'getLiquidity', inputs: [{ name: 'poolId', type: 'bytes32' }], outputs: [{ name: '', type: 'uint128' }], stateMutability: 'view' },
   { type: 'function', name: 'getFeeGrowthGlobals', inputs: [{ name: 'poolId', type: 'bytes32' }], outputs: [{ name: 'feeGrowthGlobal0', type: 'uint256' }, { name: 'feeGrowthGlobal1', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'getPositionInfo', inputs: [{ name: 'poolId', type: 'bytes32' }, { name: 'owner', type: 'address' }, { name: 'tickLower', type: 'int24' }, { name: 'tickUpper', type: 'int24' }, { name: 'salt', type: 'bytes32' }], outputs: [{ name: 'liquidity', type: 'uint128' }, { name: 'feeGrowthInside0LastX128', type: 'uint256' }, { name: 'feeGrowthInside1LastX128', type: 'uint256' }], stateMutability: 'view' },
 ] as const;
@@ -82,11 +84,22 @@ const TICK_LOWER = -887238;
 const TICK_UPPER = 887238;
 const Q128 = 2n ** 128n;
 
+interface V4LpStats {
+  unclaimedMon: string;
+  unclaimedToken: string;
+  poolMonReserve: string;
+  poolTokenReserve: string;
+  positionLiquidity: string;
+  totalPoolLiquidity: string;
+  positionSharePct: number;
+  tokenPriceMon: number;
+  poolFeeBps: number;
+}
+
 /**
- * Query V4 LP unclaimed fees for an eigen's LP position on-chain.
- * Returns { unclaimedMon, unclaimedToken } in wei strings, or null if no LP.
+ * Query V4 LP position stats on-chain: unclaimed fees, pool reserves, position share.
  */
-async function getV4LpUnclaimedFees(eigenId: string): Promise<{ unclaimedMon: string; unclaimedToken: string } | null> {
+async function getV4LpStats(eigenId: string): Promise<V4LpStats | null> {
   try {
     const eigenIdHash = keccak256(toHex(eigenId));
     const pos = await publicClient.readContract({
@@ -100,7 +113,19 @@ async function getV4LpUnclaimedFees(eigenId: string): Promise<{ unclaimedMon: st
     if (tokenId === 0n) return null;
 
     const salt = ('0x' + tokenId.toString(16).padStart(64, '0')) as `0x${string}`;
-    const [globals, posInfo] = await Promise.all([
+    const [slot0, totalLiquidity, globals, posInfo] = await Promise.all([
+      publicClient.readContract({
+        address: UNISWAP_V4_STATE_VIEW as Address,
+        abi: V4_STATE_VIEW_ABI,
+        functionName: 'getSlot0',
+        args: [poolId],
+      }),
+      publicClient.readContract({
+        address: UNISWAP_V4_STATE_VIEW as Address,
+        abi: V4_STATE_VIEW_ABI,
+        functionName: 'getLiquidity',
+        args: [poolId],
+      }),
       publicClient.readContract({
         address: UNISWAP_V4_STATE_VIEW as Address,
         abi: V4_STATE_VIEW_ABI,
@@ -118,12 +143,40 @@ async function getV4LpUnclaimedFees(eigenId: string): Promise<{ unclaimedMon: st
     const liquidity = posInfo[0];
     if (liquidity === 0n) return null;
 
+    // Unclaimed fees
     const feeGrowthDelta0 = globals[0] - posInfo[1];
     const feeGrowthDelta1 = globals[1] - posInfo[2];
     const unclaimedMon = (feeGrowthDelta0 * liquidity) / Q128;
     const unclaimedToken = (feeGrowthDelta1 * liquidity) / Q128;
 
-    return { unclaimedMon: unclaimedMon.toString(), unclaimedToken: unclaimedToken.toString() };
+    // Pool reserves from position liquidity + price
+    const sqrtPriceX96 = slot0[0];
+    const lpFee = slot0[3];
+    const Q96 = 2n ** 96n;
+    const sqrtP = Number(sqrtPriceX96) / Number(Q96);
+    const L = Number(liquidity);
+    // currency0 = native ETH (MON), currency1 = token
+    // virtualMON = L / sqrtP, virtualToken = L * sqrtP
+    const poolMonReserveNum = L / sqrtP;
+    const poolTokenReserveNum = L * sqrtP;
+    const price = sqrtP * sqrtP; // token per MON
+    const tokenPriceMon = price > 0 ? 1 / price : 0; // MON per token
+
+    const positionSharePct = Number(totalLiquidity) > 0
+      ? (Number(liquidity) / Number(totalLiquidity)) * 100
+      : 0;
+
+    return {
+      unclaimedMon: unclaimedMon.toString(),
+      unclaimedToken: unclaimedToken.toString(),
+      poolMonReserve: BigInt(Math.floor(poolMonReserveNum)).toString(),
+      poolTokenReserve: BigInt(Math.floor(poolTokenReserveNum)).toString(),
+      positionLiquidity: liquidity.toString(),
+      totalPoolLiquidity: totalLiquidity.toString(),
+      positionSharePct,
+      tokenPriceMon,
+      poolFeeBps: Number(lpFee),
+    };
   } catch {
     return null;
   }
@@ -881,12 +934,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         totalVolume += BigInt(t.eth_amount);
       }
 
-      // Query V4 LP unclaimed fees on-chain (non-blocking, 2s timeout)
-      let v4LpFees: { unclaimedMon: string; unclaimedToken: string } | null = null;
+      // Query V4 LP stats on-chain (non-blocking, 3s timeout)
+      let v4LpFees: V4LpStats | null = null;
       try {
         v4LpFees = await Promise.race([
-          getV4LpUnclaimedFees(eigenId),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+          getV4LpStats(eigenId),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
         ]);
       } catch { }
 

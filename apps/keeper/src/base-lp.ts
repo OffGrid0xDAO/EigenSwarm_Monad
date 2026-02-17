@@ -740,7 +740,7 @@ export async function collectBaseLpFees(eigenId: string): Promise<Hex | null> {
       address: LP_ADDRESS,
       abi: EIGENLP_ABI,
       functionName: 'collectFees',
-      args: [bytes32Id],
+      args: [bytes32Id, BigInt(0), BigInt(0)],
     });
 
     const receipt = await client.waitForTransactionReceipt({ hash });

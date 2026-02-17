@@ -1484,13 +1484,21 @@ export default function EigenDetailPage() {
                     {(hasLP ? [
                       { label: 'Pool', value: lpPosition.poolId ? `${lpPosition.poolId.slice(0, 8)}…${lpPosition.poolId.slice(-6)}` : '—', mono: true },
                       { label: 'Position NFT', value: lpPosition.tokenId ? `#${lpPosition.tokenId.toString()}` : '—', mono: true },
-                      { label: 'Fee Tier', value: '0.99%', mono: false },
-                      { label: 'Tick Spacing', value: lpPosition.tickSpacing?.toString() || '198', mono: true },
+                      { label: 'Fee Tier', value: eigen.v4LpStats ? `${(eigen.v4LpStats.poolFeeBps / 100).toFixed(2)}%` : '0.99%', mono: false },
                       { label: 'Range', value: 'Full Range', mono: false },
                       { label: 'Pair', value: `${eigen.tokenSymbol} / MON`, mono: false },
+                      ...(eigen.v4LpStats ? [
+                        { label: 'Pool MON', value: `${formatEth(Number(eigen.v4LpStats.poolMonReserve) / 1e18)} MON`, mono: true, highlight: true },
+                        { label: `Pool ${eigen.tokenSymbol}`, value: `${(Number(eigen.v4LpStats.poolTokenReserve) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, mono: true, highlight: false },
+                        { label: 'Position Share', value: `${eigen.v4LpStats.positionSharePct.toFixed(1)}%`, mono: true },
+                        { label: 'Token Price', value: `${eigen.v4LpStats.tokenPriceMon.toFixed(6)} MON`, mono: true },
+                      ] : []),
                       { label: 'Fees Earned', value: `${formatEth(eigen.lpFeesEarned)} MON`, mono: true, highlight: eigen.lpFeesEarned > 0 },
                       { label: 'Fees Claimed', value: `${formatEth(eigen.lpFeesClaimed)} MON`, mono: true },
-                      { label: 'Unclaimed', value: `${formatEth(eigen.lpFeesEarned - eigen.lpFeesClaimed)} MON`, mono: true, highlight: (eigen.lpFeesEarned - eigen.lpFeesClaimed) > 0 },
+                      { label: 'Unclaimed MON', value: eigen.v4LpStats ? `${formatEth(Number(eigen.v4LpStats.unclaimedMon) / 1e18)} MON` : `${formatEth(eigen.lpFeesEarned - eigen.lpFeesClaimed)} MON`, mono: true, highlight: (eigen.lpFeesEarned - eigen.lpFeesClaimed) > 0 },
+                      ...(eigen.v4LpStats && Number(eigen.v4LpStats.unclaimedToken) > 0 ? [
+                        { label: `Unclaimed ${eigen.tokenSymbol}`, value: `${(Number(eigen.v4LpStats.unclaimedToken) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, mono: true, highlight: true },
+                      ] : []),
                     ] : [
                       { label: 'Pair', value: `${eigen.tokenSymbol} / MON`, mono: false },
                       { label: 'Protocol', value: 'Uniswap V4', mono: false },
@@ -1898,7 +1906,7 @@ function WaterfallRow({ label, value, percent, isCost }: { label: string; value:
         <div className={`h-full rounded-lg transition-all ${barColor}`} style={{ width: `${Math.max(barWidth, 1)}%` }} />
       </div>
       <span className={`font-mono text-[11px] font-medium w-24 text-right flex-shrink-0 ${color}`}>
-        {isNeg ? '' : '+'}{formatEth(value)} ETH
+        {isNeg ? '' : '+'}{formatEth(value)} MON
       </span>
     </div>
   );

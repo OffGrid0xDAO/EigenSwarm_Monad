@@ -86,6 +86,17 @@ export interface Eigen {
   poolVersion?: string | null;   // 'atomic' | 'v4' | null
   lpPoolId?: string | null;      // V4 pool ID (bytes32 hex)
 
+  // V4 LP on-chain stats (populated from StateView queries)
+  v4LpStats?: {
+    unclaimedMon: string;
+    unclaimedToken: string;
+    poolMonReserve: string;
+    poolTokenReserve: string;
+    positionSharePct: number;
+    tokenPriceMon: number;
+    poolFeeBps: number;
+  } | null;
+
   // AI strategy
   customPrompt?: string | null;
 

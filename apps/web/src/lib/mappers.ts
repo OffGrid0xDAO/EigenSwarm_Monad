@@ -73,6 +73,17 @@ export function mapApiEigenToEigen(api: ApiEigen, pnl?: ApiPnlSummary | null): E
     poolVersion: (config as any)?.pool_version || null,
     lpPoolId: (config as any)?.lp_pool_id || null,
 
+    // V4 LP on-chain stats
+    v4LpStats: api.v4LpFees ? {
+      unclaimedMon: api.v4LpFees.unclaimedMon,
+      unclaimedToken: api.v4LpFees.unclaimedToken,
+      poolMonReserve: api.v4LpFees.poolMonReserve,
+      poolTokenReserve: api.v4LpFees.poolTokenReserve,
+      positionSharePct: api.v4LpFees.positionSharePct,
+      tokenPriceMon: api.v4LpFees.tokenPriceMon,
+      poolFeeBps: api.v4LpFees.poolFeeBps,
+    } : null,
+
     // AI strategy
     customPrompt: config?.custom_prompt || null,
 
