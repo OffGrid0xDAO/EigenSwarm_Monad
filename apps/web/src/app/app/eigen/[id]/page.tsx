@@ -804,9 +804,9 @@ export default function EigenDetailPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-display text-xs text-txt-primary">Low balance</span>
-                <span className="text-[11px] text-txt-muted ml-2">Add ETH to continue volume generation</span>
+                <span className="text-[11px] text-txt-muted ml-2">Add MON to continue volume generation</span>
               </div>
-              <GlowButton variant="primary" size="sm" onClick={() => setShowDepositInput(true)}>Add ETH</GlowButton>
+              <GlowButton variant="primary" size="sm" onClick={() => setShowDepositInput(true)}>Add MON</GlowButton>
             </div>
           )}
 
@@ -1098,7 +1098,7 @@ export default function EigenDetailPage() {
                 {/* Trading inventory bar */}
                 <div>
                   <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-txt-disabled mb-1">
-                    <span>ETH {Math.round(ethRatio)}%</span>
+                    <span>MON {Math.round(ethRatio)}%</span>
                     <span>Inventory Split</span>
                     <span>Token {Math.round(100 - ethRatio)}%</span>
                   </div>
@@ -1113,7 +1113,7 @@ export default function EigenDetailPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-mono text-txt-disabled mt-0.5">
-                    <span>{formatEth(inventoryEthValue)} ETH</span>
+                    <span>{formatEth(inventoryEthValue)} MON</span>
                     <span>{eigen.tokenBalance.toLocaleString()} {eigen.tokenSymbol}</span>
                   </div>
                 </div>
@@ -1141,8 +1141,8 @@ export default function EigenDetailPage() {
                         />
                       </div>
                       <div className="flex items-center justify-between text-[10px] font-mono text-txt-disabled mt-0.5">
-                        <span>{formatEth(eigen.lpFeesClaimed)} ETH</span>
-                        <span>{formatEth(eigen.lpFeesEarned - eigen.lpFeesClaimed)} ETH</span>
+                        <span>{formatEth(eigen.lpFeesClaimed)} MON</span>
+                        <span>{formatEth(eigen.lpFeesEarned - eigen.lpFeesClaimed)} MON</span>
                       </div>
                     </div>
                   );
@@ -1185,7 +1185,7 @@ export default function EigenDetailPage() {
                         {/* Position details row */}
                         <div className="flex items-center gap-3 text-[10px]">
                           <span className="text-txt-disabled">Pair</span>
-                          <span className="font-mono font-medium text-txt-primary">{eigen.tokenSymbol}/ETH</span>
+                          <span className="font-mono font-medium text-txt-primary">{eigen.tokenSymbol}/{eigen.chainId === 143 ? 'MON' : 'ETH'}</span>
                           <div className="w-px h-3 bg-[#E8E6E0]" />
                           <span className="text-txt-disabled">Fee</span>
                           <span className="font-mono font-medium text-txt-primary">0.99%</span>
@@ -1306,10 +1306,10 @@ export default function EigenDetailPage() {
                           onClick={handleWithdraw}
                           loading={withdrawHook.isPending || withdrawHook.isConfirming}
                         >
-                          Withdraw Remaining ETH
+                          Withdraw Remaining MON
                         </GlowButton>
                         <span className="text-caption text-txt-disabled">
-                          {formatEth(eigen.ethBalance)} ETH still in vault
+                          {formatEth(eigen.ethBalance)} MON still in vault
                         </span>
                       </div>
                     )
@@ -1321,7 +1321,7 @@ export default function EigenDetailPage() {
                             type="number"
                             step="0.001"
                             min="0.001"
-                            placeholder="ETH amount"
+                            placeholder="MON amount"
                             value={depositAmount}
                             onChange={(e) => setDepositAmount(e.target.value)}
                             className="w-32 px-3 py-1.5 text-sm font-mono bg-[#F9F8F5] border border-[#E8E6E0] rounded-xl text-txt-primary placeholder:text-txt-disabled focus:outline-none focus:border-eigen-violet/30"
@@ -1354,7 +1354,7 @@ export default function EigenDetailPage() {
                             size="sm"
                             onClick={() => setShowDepositInput(true)}
                           >
-                            Add ETH
+                            Add MON
                           </GlowButton>
                           <GlowButton
                             variant="ghost"
@@ -1412,7 +1412,7 @@ export default function EigenDetailPage() {
             {/* Parameters — compact 3-column grid */}
             <span className="font-display text-sm italic text-white/50">Parameters</span>
             <div className="grid grid-cols-3 gap-x-4 gap-y-2.5 mt-2">
-              <DarkParamRow label="Volume Target" value={`${eigen.volumeTarget} ETH/day`} />
+              <DarkParamRow label="Volume Target" value={`${eigen.volumeTarget} MON/day`} />
               <DarkParamRow label="Frequency" value={`${eigen.tradeFrequency} trades/hr`} />
               <DarkParamRow label="Order Size" value={`${eigen.orderSizePctMin}-${eigen.orderSizePctMax}%`} />
               <DarkParamRow label="Spread" value={`${eigen.spreadWidth}%`} />
@@ -1454,8 +1454,11 @@ export default function EigenDetailPage() {
             {/* ── EigenLP Position ── */}
             {(() => {
               const zeroAddr = '0x0000000000000000000000000000000000000000';
-              const hasLP = lpPosition.token && lpPosition.token !== zeroAddr;
-              const noLP = !lpPosition.token || lpPosition.token === zeroAddr;
+              const hasOnChainLP = lpPosition.token && lpPosition.token !== zeroAddr;
+              const hasConfigLP = eigen.lpPoolId && eigen.lpPoolId !== zeroAddr && !/^0x0+$/.test(eigen.lpPoolId);
+              const hasApiLP = !!eigen.v4LpStats;
+              const hasLP = hasOnChainLP || hasConfigLP || hasApiLP;
+              const noLP = !hasLP && !lpPosition.isLoading;
               const canCreate = noLP && displayStatus === 'active' && eigen.tokenAddress;
 
               return (
@@ -1634,7 +1637,7 @@ export default function EigenDetailPage() {
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="text-[10px] text-white/40 uppercase tracking-wider block mb-1">ETH Amount</label>
+                              <label className="text-[10px] text-white/40 uppercase tracking-wider block mb-1">MON Amount</label>
                               <input
                                 type="number"
                                 step="0.001"
@@ -1749,14 +1752,14 @@ export default function EigenDetailPage() {
           {liquidationReady && (
             <div className="rounded-2xl border border-accent-lime/30 bg-accent-lime/5 px-5 py-4 flex items-center justify-between">
               <div>
-                <p className="font-display text-sm text-white">Tokens sold. Ready to withdraw ETH.</p>
-                <p className="text-xs text-white/60 mt-1">Click to terminate the eigen and withdraw all ETH to your wallet.</p>
+                <p className="font-display text-sm text-white">Tokens sold. Ready to withdraw MON.</p>
+                <p className="text-xs text-white/60 mt-1">Click to terminate the eigen and withdraw all MON to your wallet.</p>
               </div>
               <GlowButton
                 onClick={handleWithdrawAfterLiquidation}
                 loading={withdrawHook.isPending || withdrawHook.isConfirming}
               >
-                Withdraw ETH
+                Withdraw MON
               </GlowButton>
             </div>
           )}
@@ -1792,7 +1795,7 @@ export default function EigenDetailPage() {
                 </div>
                 <div>
                   <p className="font-display text-sm text-txt-primary">Agent needs gas</p>
-                  <p className="text-[11px] text-txt-muted mt-0.5">Send Monad ETH to the keeper wallet</p>
+                  <p className="text-[11px] text-txt-muted mt-0.5">Send MON to the keeper wallet</p>
                 </div>
               </div>
               <button
@@ -1846,7 +1849,7 @@ export default function EigenDetailPage() {
       <ConfirmDialog
         open={showTakeProfit}
         title={`Take Profit — ${eigen?.id?.slice(0, 10)}...`}
-        description="This will sell 100% of tokens across all sub-wallets and return ETH to the vault. Sells are staggered across wallets. The eigen will continue running after the sell."
+        description="This will sell 100% of tokens across all sub-wallets and return MON to the vault. Sells are staggered across wallets. The eigen will continue running after the sell."
         confirmLabel="Take Profit"
         onConfirm={handleTakeProfit}
         onCancel={() => setShowTakeProfit(false)}
@@ -1855,7 +1858,7 @@ export default function EigenDetailPage() {
       <ConfirmDialog
         open={showLiquidate}
         title={`Liquidate & Terminate ${eigen?.id?.slice(0, 10)}...`}
-        description="This will sell all token positions across all sub-wallets, return ETH to the vault, then terminate the eigen. All remaining ETH will be withdrawn. This action cannot be undone."
+        description="This will sell all token positions across all sub-wallets, return MON to the vault, then terminate the eigen. All remaining MON will be withdrawn. This action cannot be undone."
         confirmLabel="Liquidate & Terminate"
         onConfirm={handleLiquidate}
         onCancel={() => setShowLiquidate(false)}
@@ -1864,7 +1867,7 @@ export default function EigenDetailPage() {
       <ConfirmDialog
         open={showTerminate}
         title={`Terminate ${eigen?.id?.slice(0, 10)}...`}
-        description={`Terminating this eigen will withdraw the vault ETH balance only. Any tokens held in sub-wallets will NOT be sold. Use "Liquidate & Terminate" to sell tokens first.`}
+        description={`Terminating this eigen will withdraw the vault MON balance only. Any tokens held in sub-wallets will NOT be sold. Use "Liquidate & Terminate" to sell tokens first.`}
         confirmLabel="Terminate Eigen"
         onConfirm={handleTerminate}
         onCancel={() => setShowTerminate(false)}

@@ -127,6 +127,7 @@ export function useLPPosition(eigenId: string) {
     abi: EIGENLP_ABI,
     functionName: 'getPosition',
     args: [bytes32Id],
+    chainId: 143,
     query: { enabled: !!eigenId },
   });
 
