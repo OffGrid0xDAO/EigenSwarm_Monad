@@ -824,7 +824,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
               : 0,
             tokenBalance: totalTokenAmount.toString(),
             totalCostEth: totalCost,
-            totalGasCost: stats.totalGasCost,
+            totalGasCost: stats.totalGasCost || ((ponder?.tradeCount || 0) * 400_000_000_000_000),
           },
         });
       }
@@ -927,12 +927,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         }
       }
 
-      // Compute volume & trade count from local trades (more accurate than Ponder)
+      // Use the better data source for volume & trade count
       const trades = getTradesByEigen(eigenId, 10000);
-      let totalVolume = 0n;
+      let localVolume = 0n;
       for (const t of trades) {
-        totalVolume += BigInt(t.eth_amount);
+        localVolume += BigInt(t.eth_amount);
       }
+      // Prefer Ponder data when it has more trades (e.g. local DB was wiped/incomplete)
+      const ponderTradeCount = ponderEigen?.tradeCount || 0;
+      const usePonderVolume = ponderTradeCount > trades.length;
+      const totalVolume = usePonderVolume ? BigInt(ponderEigen?.totalTraded || '0') : localVolume;
+      const tradeCount = usePonderVolume ? ponderTradeCount : trades.length;
 
       // Query V4 LP stats on-chain (non-blocking, 3s timeout)
       let v4LpFees: V4LpStats | null = null;
@@ -943,21 +948,31 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         ]);
       } catch { }
 
+      // Estimate gas when local DB has 0 gas data but Ponder has trades
+      // gas_cost in DB is stored as wei string; totalGasCost from SQL is sum of REAL(wei)
+      let totalGasCost = stats.totalGasCost;
+      if (totalGasCost === 0 && tradeCount > 0) {
+        // Estimate ~400k gwei per trade on Monad (typical swap: ~200k gas * 2 gwei)
+        const estimatedGasPerTradeWei = 400_000_000_000_000; // 0.0004 MON in wei
+        totalGasCost = tradeCount * estimatedGasPerTradeWei;
+      }
+
       return json(res, {
         data: {
           ...ponderEigen,
-          // Override Ponder's totalTraded/tradeCount with local DB values
           totalTraded: totalVolume.toString(),
-          tradeCount: trades.length,
+          tradeCount,
           config: config || null,
           pnl: {
             ...stats,
+            totalBuys: usePonderVolume ? ponderTradeCount - (stats.totalSells || 0) : stats.totalBuys,
+            totalSells: stats.totalSells,
             winRate: (stats.winCount + stats.lossCount) > 0
               ? (stats.winCount / (stats.winCount + stats.lossCount)) * 100
               : 0,
             tokenBalance: totalTokenAmount.toString(),
             totalCostEth: totalCost,
-            totalGasCost: stats.totalGasCost,
+            totalGasCost,
           },
           v4LpFees,
           gasWarning,
