@@ -87,7 +87,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: [
       {
-        url: `${SITE_URL}/og-image.png`,
+        url: `${SITE_URL}/social.png`,
         width: 1200,
         height: 630,
         alt: 'EigenSwarm — Autonomous Market Making Agents on Monad',
@@ -100,7 +100,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     creator: '@eigenswarm',
     site: '@eigenswarm',
-    images: [`${SITE_URL}/og-image.png`],
+    images: [`${SITE_URL}/social.png`],
   },
   manifest: '/manifest.json',
   category: 'DeFi',

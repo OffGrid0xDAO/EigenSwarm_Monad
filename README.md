@@ -239,7 +239,7 @@ eigenswarm/
 
 | Contract | Address | Explorer |
 |----------|---------|----------|
-| **EigenVault** | `0x1003EdcD563Dcae3Bc1685b901fc692bbD2d941b` | [View on Monadscan](https://monadscan.com/address/0x1003EdcD563Dcae3Bc1685b901fc692bbD2d941b) |
+| **EigenVault** | `0x1003EdcD563Dcae3Bc1685b901fc692bbD2d941b` | [View on Monadscan](https://monadscan.com/address/0x1003EdcD563Dcae3Bc1685b901fc692bbD2d941b) | **EigenSwarm** | 0x2Bb7dac00eFaC28c3B76A1D72757C65C38eF7777| [View on Monadscan](https://monadscan.com/address/0x2Bb7dac00eFaC28c3B76A1D72757C65C38eF7777) 
 | **EigenLP** | `0xEf8b421B15Dd0Aa59392431753029A184F3eEc54` | [View on Monadscan](https://monadscan.com/address/0xEf8b421B15Dd0Aa59392431753029A184F3eEc54) |
 | **EigenAtomicLauncher** | `0x9920E8900a154Da216d56F005156FA354835CDAE` | [View on Monadscan](https://monadscan.com/address/0x9920E8900a154Da216d56F005156FA354835CDAE) |
 
