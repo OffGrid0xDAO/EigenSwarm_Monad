@@ -872,14 +872,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     const eigenId = resolveEigenId(eigenMatch[1]!);
     const ponderQueryId = eigenIdToBytes32(eigenId);
     try {
-      // Race ponder fetch against 3s timeout
+      // Try single-record Ponder query first, then bulk fallback, then on-chain cache
       let ponderEigen = await Promise.race([
         fetchEigen(ponderQueryId).catch(() => null),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
       ]);
       const config = getEigenConfig(eigenId);
 
-      // If Ponder didn't find it, check on-chain cache
+      // If single query failed, try bulk fetch (which reliably works) and find our eigen
+      if (!ponderEigen) {
+        try {
+          const allEigens = await Promise.race([
+            fetchAllEigens().catch(() => [] as PonderEigen[]),
+            new Promise<PonderEigen[]>((resolve) => setTimeout(() => resolve([]), 5000)),
+          ]);
+          ponderEigen = allEigens.find((e) => e.id === ponderQueryId) || null;
+        } catch { }
+      }
+
+      // Last resort: on-chain cache
       if (!ponderEigen) {
         const onChain = getCachedOnChainEigens();
         ponderEigen = onChain.find((e) => e.id === ponderQueryId) || null;
@@ -957,9 +968,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         totalGasCost = tradeCount * estimatedGasPerTradeWei;
       }
 
+      // Build base fields — use Ponder data, fall back to config/defaults
+      const base = ponderEigen ? { ...ponderEigen } : {
+        id: ponderQueryId,
+        owner: config?.owner_address || '',
+        status: config?.status || 'active',
+        balance: '0',
+        totalDeposited: config?.gas_budget_eth ? BigInt(Math.round((config.gas_budget_eth || 0) * 1e18)).toString() : '0',
+        totalWithdrawn: '0',
+        totalTraded: '0',
+        totalFees: '0',
+        feeOwed: '0',
+        feeRateBps: 0,
+        tradeCount: 0,
+        createdAt: config?.created_at ? Math.floor(new Date(config.created_at + 'Z').getTime() / 1000) : 0,
+      };
+
       return json(res, {
         data: {
-          ...ponderEigen,
+          ...base,
           totalTraded: totalVolume.toString(),
           tradeCount,
           config: config || null,
