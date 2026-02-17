@@ -1118,35 +1118,7 @@ export default function EigenDetailPage() {
                   </div>
                 </div>
 
-                {/* LP fees bar */}
-                {(eigen.lpFeesEarned > 0 || eigen.lpFeesClaimed > 0) && (() => {
-                  const totalLpFees = eigen.lpFeesEarned;
-                  const claimedPct = totalLpFees > 0 ? (eigen.lpFeesClaimed / totalLpFees) * 100 : 0;
-                  const unclaimedPct = 100 - claimedPct;
-                  return (
-                    <div>
-                      <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-txt-disabled mb-1">
-                        <span>Claimed {Math.round(claimedPct)}%</span>
-                        <span>LP Fees</span>
-                        <span>Unclaimed {Math.round(unclaimedPct)}%</span>
-                      </div>
-                      <div className="h-3 rounded-xl bg-[#F5F3EE] overflow-hidden flex">
-                        <div
-                          className="h-full bg-status-success/60 rounded-l-full transition-all"
-                          style={{ width: `${claimedPct}%` }}
-                        />
-                        <div
-                          className="h-full bg-[#7B3FE4]/40 rounded-r-full transition-all"
-                          style={{ width: `${unclaimedPct}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] font-mono text-txt-disabled mt-0.5">
-                        <span>{formatEth(eigen.lpFeesClaimed)} MON</span>
-                        <span>{formatEth(eigen.lpFeesEarned - eigen.lpFeesClaimed)} MON</span>
-                      </div>
-                    </div>
-                  );
-                })()}
+                {/* LP fees bar removed — redundant with EigenLP ledger below */}
 
                 {/* ── UniswapV4 LP Performance ── */}
                 {(() => {
