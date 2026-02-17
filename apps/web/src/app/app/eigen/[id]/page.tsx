@@ -1017,7 +1017,7 @@ export default function EigenDetailPage() {
                   </div>
                   <div className="p-3 bg-[#FAFAF7] border border-[#E8E6E0] rounded-xl">
                     <h3 className="detail-section-title mb-2">Distribution</h3>
-                    <TradeDistribution trades={rawTrades} className="h-[150px]" />
+                    <TradeDistribution trades={rawTrades} totalBuys={eigen.totalBuys} totalSells={eigen.totalSells} totalTrades={eigen.tradesExecuted} className="h-[150px]" />
                   </div>
                 </div>
 

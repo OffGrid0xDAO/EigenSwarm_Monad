@@ -65,6 +65,8 @@ export interface Eigen {
   currentPrice: number;
   volumeGenerated: number;
   tradesExecuted: number;
+  totalBuys: number;
+  totalSells: number;
   realizedPnl: number;
   unrealizedPnl: number;
   lpFeesEarned: number;
