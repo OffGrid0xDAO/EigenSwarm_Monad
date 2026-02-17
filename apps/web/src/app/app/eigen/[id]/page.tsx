@@ -436,7 +436,7 @@ export default function EigenDetailPage() {
   const avgTradeSize = eigen.tradesExecuted > 0 ? eigen.volumeGenerated / eigen.tradesExecuted : 0;
   const volumeTarget = eigen.volumeTarget * daysActive;
   const volumeAttainment = volumeTarget > 0 ? (eigen.volumeGenerated / volumeTarget) * 100 : 0;
-  const costPerVolume = eigen.volumeGenerated > 0 ? (eigen.totalGasSpent / eigen.volumeGenerated) * 100 : 0;
+  const gasEfficiency = eigen.totalGasSpent > 0 ? eigen.volumeGenerated / eigen.totalGasSpent : 0;
   const netPnl = eigen.realizedPnl + eigen.unrealizedPnl + eigen.lpFeesEarned - eigen.totalGasSpent;
   const netRoi = eigen.ethDeposited > 0 ? (netPnl / eigen.ethDeposited) * 100 : 0;
 
@@ -1033,7 +1033,7 @@ export default function EigenDetailPage() {
                       { label: 'Avg Trade Size', value: formatEth(avgTradeSize), suffix: 'MON' },
                       { label: 'Trades', value: eigen.tradesExecuted.toLocaleString(), suffix: `(${tradesPerDay.toFixed(1)}/d)` },
                       { label: 'Win Rate', value: `${eigen.winRate.toFixed(1)}%`, suffix: '' },
-                      { label: 'Gas Efficiency', value: `${costPerVolume.toFixed(3)}%`, suffix: 'cost/vol' },
+                      { label: 'Gas Efficiency', value: `${formatCompact(gasEfficiency)}`, suffix: 'vol/gas' },
                       { label: 'LP Fees Earned', value: formatEth(eigen.lpFeesEarned), suffix: 'MON' },
                       { label: 'Net P&L', value: `${netPnl > 0 ? '+' : ''}${formatEth(netPnl)}`, suffix: 'MON', pnl: netPnl },
                       ...(arbCount > 0 ? [
