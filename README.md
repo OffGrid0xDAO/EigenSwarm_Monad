@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <code>x402 Payments</code> &middot; <code>ERC-8004 Agent Identity</code> &middot; <code>nad.fun Atomic Launch</code> &middot; <code>Uniswap V4</code>
+  <code>x402 Payments</code> &middot; <code>ERC-8004 Agent Identity</code> &middot; <code>nad.fun Atomic Launch</code> &middot; <code>ponder.sh</code> &middot;<code>Uniswap V4</code>
 </p>
 
 ---
