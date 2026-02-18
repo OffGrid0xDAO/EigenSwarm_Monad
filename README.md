@@ -436,7 +436,7 @@ User / AI Agent
 | **Frontend** | Next.js 14, React 18, Tailwind CSS |
 | **Auth** | Privy, WalletConnect, wagmi |
 | **DEX** | Uniswap V4, nad.fun bonding curves |
-| **Indexing** | Ponder (GraphQL) |
+| **Indexing** | Ponder.sh (GraphQL) |
 | **Agent Identity** | ERC-8004 (Identity + Reputation) |
 | **Payments** | x402 protocol (USDC) |
 | **Monorepo** | Turborepo, pnpm workspaces |
