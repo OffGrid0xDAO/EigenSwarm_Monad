@@ -115,17 +115,17 @@ EigenSwarm implements the [x402 payment protocol](https://docs.monad.xyz/guides/
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Agent                           Keeper API                         │
-│    │                                │                               │
+│    │                                 │                              │
 │    ├─ POST /api/agents/buy-volume ──►│                              │
 │    │  { tokenAddress, packageId }    │                              │
 │    │                                 │                              │
 │    │◄── 402 Payment Required ────────┤                              │
 │    │  { amount: "10", token: "USDC", │                              │
-│    │    recipient: "0x...",           │                              │
+│    │    recipient: "0x...",          │                              │
 │    │    chain: "monad" }             │                              │
 │    │                                 │                              │
-│    ├─ USDC.transfer(recipient, 10) ──► Monad (400ms confirmation)  │
-│    │  tx: 0xabc123...               │                               │
+│    ├─ USDC.transfer(recipient, 10) ──► Monad (400ms confirmation)   │
+│    │  tx: 0xabc123...                │                              │
 │    │                                 │                              │
 │    ├─ POST /api/agents/buy-volume ──►│                              │
 │    │  + header X-PAYMENT: 0xabc123   │                              │
@@ -133,8 +133,8 @@ EigenSwarm implements the [x402 payment protocol](https://docs.monad.xyz/guides/
 │    │                                 ├─ Swap USDC → MON (treasury)  │
 │    │                                 ├─ Fund EigenVault             │
 │    │                                 ├─ Spin up trading agent       │
-│    │◄── 201 Created ────────────────┤                               │
-│    │  { eigenId: "ES-a1f2",         │                               │
+│    │◄── 201 Created ─────────────────┤                              │
+│    │  { eigenId: "ES-a1f2",          │                              │
 │    │    status: "active",            │                              │
 │    │    funding: { funded: true } }  │                              │
 │                                                                     │
